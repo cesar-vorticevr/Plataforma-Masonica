@@ -1,14 +1,18 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { esGlobal } from "@/lib/roles";
+import { DATA_MODE } from "@/lib/supabase/client";
 import { Card, PageTitle, Button, Input, Select, Badge, Modal } from "@/components/ui";
 import {
-  listLogias, listUsuariosLogia, listUsuarios, getLogia, validarUsuario, actualizarUsuario,
-  cambiarPalabraClaveLogia, crearLogia, crearUsuario, getGenerales,
-} from "@/lib/data/store";
+  adminListLogias, adminGetLogia, adminListUsuarios, adminValidar, adminSetEstado,
+  adminSetRol, adminCambiarPalabra,
+} from "@/lib/data/identidad";
+import { listLogias, crearLogia, crearUsuario, actualizarUsuario, getGenerales } from "@/lib/data/store";
 import { Grado, GRADO_LABEL, ROL_LABEL, Usuario, Logia } from "@/lib/types";
 import { fecha } from "@/lib/format";
+
+const SB = DATA_MODE === "supabase";
 
 export default function Admin() {
   const { user } = useAuth();
@@ -17,16 +21,34 @@ export default function Admin() {
 }
 
 function AdminInner({ user }: { user: Usuario }) {
-  const [tick, setTick] = useState(0);
-  const [logiaSel, setLogiaSel] = useState(user.logia_id);
   const global = esGlobal(user.rol);
-  const logias = listLogias();
-  const usuarios = global ? listUsuarios().filter(u => u.logia_id === logiaSel) : listUsuariosLogia(user.logia_id);
-  const logia = getLogia(global ? logiaSel : user.logia_id)!;
+  const [logiaSel, setLogiaSel] = useState(user.logia_id);
+  const [logias, setLogias] = useState<Logia[]>([]);
+  const [logia, setLogia] = useState<Logia | undefined>(undefined);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [tick, setTick] = useState(0);
   const refresh = () => setTick(t => t + 1);
+  const logiaId = global ? logiaSel : user.logia_id;
+
+  useEffect(() => {
+    let activo = true;
+    (async () => {
+      const [ls, lg, us] = await Promise.all([
+        global ? adminListLogias() : Promise.resolve([] as Logia[]),
+        adminGetLogia(logiaId),
+        adminListUsuarios(logiaId),
+      ]);
+      if (!activo) return;
+      setLogias(ls); setLogia(lg); setUsuarios(us); setLoading(false);
+    })();
+    return () => { activo = false; };
+  }, [global, logiaId, tick]);
+
+  if (loading || !logia) return <div className="min-h-[40vh] grid place-items-center text-slate-400">Cargando…</div>;
 
   return (
-    <div key={tick}>
+    <div>
       <PageTitle title="Administración" subtitle={global ? "Gestión de logias, secretarios y hermanos." : "Gestión de los hermanos de tu logia."} />
 
       <div className="grid lg:grid-cols-3 gap-4 mb-6">
@@ -39,7 +61,7 @@ function AdminInner({ user }: { user: Usuario }) {
           </Card>
         )}
         <PalabraClave logia={logia} onSave={refresh} />
-        {global && <AltaRapida onDone={refresh} />}
+        {global && !SB && <AltaRapida onDone={refresh} />}
       </div>
 
       <Card className="p-0 overflow-hidden">
@@ -53,6 +75,7 @@ function AdminInner({ user }: { user: Usuario }) {
             ))}
           </tbody>
         </table>
+        {usuarios.length === 0 && <div className="p-6 text-center text-slate-400 text-sm">No hay hermanos registrados en esta logia.</div>}
       </Card>
     </div>
   );
@@ -78,13 +101,22 @@ function UsuarioRow({ u, onChange }: { u: Usuario; onChange: () => void }) {
 
 function GestionUsuario({ u, onClose }: { u: Usuario; onClose: () => void }) {
   const [grado, setGrado] = useState<Grado>(u.grado ?? "aprendiz");
-  const g = getGenerales(u.id);
+  const [guardando, setGuardando] = useState(false);
+  const g = SB ? undefined : getGenerales(u.id);
+
+  async function accion(fn: () => Promise<void>) {
+    setGuardando(true);
+    try { await fn(); onClose(); } finally { setGuardando(false); }
+  }
+
   return (
     <Modal open onClose={onClose} title={`Gestionar a ${u.nombre.split("(")[0].trim()}`}>
       <div className="space-y-4">
         <div className="rounded-lg bg-slate-50 p-3 text-sm">
           <div className="font-medium text-slate-700 mb-1">Generales (solo administradores)</div>
-          {g ? (
+          {SB ? (
+            <div className="text-slate-400 text-xs">Módulo de Generales en preparación (próximo corte).</div>
+          ) : g ? (
             <div className="text-slate-600 text-xs space-y-0.5">
               <div>Nacimiento: {fecha(g.fecha_nacimiento)} · Tel: {g.telefono ?? "—"}</div>
               <div>Emergencia: {g.contacto_emergencia_nombre ?? "—"} ({g.contacto_emergencia_tel ?? "—"})</div>
@@ -100,16 +132,18 @@ function GestionUsuario({ u, onClose }: { u: Usuario; onClose: () => void }) {
               <option value="companero">Compañero</option>
               <option value="maestro">Maestro</option>
             </Select>
-            <Button onClick={() => { validarUsuario(u.id, grado); onClose(); }}>Validar</Button>
+            <Button disabled={guardando} onClick={() => accion(() => adminValidar(u.id, grado))}>Validar</Button>
           </div>
           <p className="text-xs text-slate-400 mt-1">Al validar y asignar grado se habilita el acceso completo.</p>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
-          <Button variant="ghost" onClick={() => { actualizarUsuario(u.id, { rol: u.rol === "tesorero" ? "hermano" : "tesorero" }); onClose(); }}>
+          <Button variant="ghost" disabled={guardando}
+            onClick={() => accion(() => adminSetRol(u.id, u.rol === "tesorero" ? "hermano" : "tesorero"))}>
             {u.rol === "tesorero" ? "Quitar tesorero" : "Dar acceso de tesorero"}
           </Button>
-          <Button variant="ghost" onClick={() => { actualizarUsuario(u.id, { estado: u.estado === "bloqueado" ? "validado" : "bloqueado" }); onClose(); }}>
+          <Button variant="ghost" disabled={guardando}
+            onClick={() => accion(() => adminSetEstado(u.id, u.estado === "bloqueado" ? "validado" : "bloqueado"))}>
             {u.estado === "bloqueado" ? "Desbloquear" : "Bloquear"}
           </Button>
         </div>
@@ -119,19 +153,27 @@ function GestionUsuario({ u, onClose }: { u: Usuario; onClose: () => void }) {
 }
 
 function PalabraClave({ logia, onSave }: { logia: Logia; onSave: () => void }) {
-  const [val, setVal] = useState(logia.palabra_clave);
+  // En modo supabase no se muestra el hash: el campo arranca vacío para fijar una nueva.
+  const [val, setVal] = useState(SB ? "" : logia.palabra_clave);
+  const [guardando, setGuardando] = useState(false);
+  async function guardar() {
+    if (SB && !val) return;
+    setGuardando(true);
+    try { await adminCambiarPalabra(logia.id, val); onSave(); } finally { setGuardando(false); }
+  }
   return (
     <Card>
       <h3 className="font-semibold text-navy mb-2 text-sm">Palabra clave de la logia</h3>
       <div className="flex gap-2">
-        <Input value={val} onChange={e => setVal(e.target.value)} />
-        <Button onClick={() => { cambiarPalabraClaveLogia(logia.id, val); onSave(); }}>Guardar</Button>
+        <Input value={val} onChange={e => setVal(e.target.value)} placeholder={SB ? "Nueva palabra clave" : ""} />
+        <Button onClick={guardar} disabled={guardando}>Guardar</Button>
       </div>
       <p className="text-xs text-slate-400 mt-1">Controla quién puede registrarse en esta logia.</p>
     </Card>
   );
 }
 
+// Alta de logias y secretarios (solo modo demo por ahora; en supabase requiere route handler).
 function AltaRapida({ onDone }: { onDone: () => void }) {
   const [open, setOpen] = useState<"logia" | "secretario" | null>(null);
   const logias = listLogias();
