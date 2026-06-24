@@ -1,33 +1,54 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { Card, PageTitle, Button, SemaforoBadge, Badge, Empty } from "@/components/ui";
 import { PREGUNTAS, evaluar, SEMAFORO_TEXTO, mejora } from "@/lib/health";
-import { listEvaluaciones, addEvaluacion } from "@/lib/data/store";
+import {
+  listEvaluaciones, addEvaluacion, tieneConsentimiento, registrarConsentimiento, AVISO_PRIVACIDAD_VERSION,
+} from "@/lib/data/salud";
 import { EvaluacionSalud, CONDICION_LABEL, Semaforo, RespuestasSalud, RespuestaSalud } from "@/lib/types";
 import { fecha } from "@/lib/format";
 
 export default function SaludPage() {
   const { user } = useAuth();
+  if (!user) return null;
+  return <SaludInner userId={user.id} />;
+}
+
+function SaludInner({ userId }: { userId: string }) {
   const [tab, setTab] = useState<"panel" | "cuestionario">("panel");
   const [resp, setResp] = useState<RespuestasSalud>({});
-  const [tick, setTick] = useState(0);
-  if (!user) return null;
+  const [evals, setEvals] = useState<EvaluacionSalud[]>([]);
+  const [consentido, setConsentido] = useState<boolean | null>(null); // null = cargando
+  const [aceptaAviso, setAceptaAviso] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [reload, setReload] = useState(0);
 
-  const evals = listEvaluaciones(user.id);
+  useEffect(() => { listEvaluaciones(userId).then(setEvals); }, [userId, reload]);
+  useEffect(() => { tieneConsentimiento(userId, AVISO_PRIVACIDAD_VERSION).then(setConsentido); }, [userId]);
+
   const ultima = evals[evals.length - 1];
   const previa = evals[evals.length - 2];
 
   function set(id: string, v: RespuestaSalud) { setResp(s => ({ ...s, [id]: v })); }
-  function guardar() {
-    const r = evaluar(resp);
-    const ev: EvaluacionSalud = { id: Math.random().toString(36).slice(2), usuario_id: user!.id,
-      fecha: new Date().toISOString(), respuestas: resp, ...r };
-    addEvaluacion(ev); setResp({}); setTab("panel"); setTick(t => t + 1);
+
+  async function aceptarYContinuar() {
+    await registrarConsentimiento(userId, AVISO_PRIVACIDAD_VERSION);
+    setConsentido(true);
+  }
+
+  async function guardar() {
+    setGuardando(true);
+    try {
+      const r = evaluar(resp);
+      await addEvaluacion({ usuario_id: userId, respuestas: resp, ...r });
+      setResp({}); setTab("panel"); setReload(x => x + 1);
+    } finally { setGuardando(false); }
   }
 
   return (
-    <div key={tick}>
+    <div>
       <PageTitle title="Salud" subtitle="Evaluación orientativa de factores de riesgo. No sustituye una consulta médica."
         action={<Button onClick={() => setTab(tab === "panel" ? "cuestionario" : "panel")}>
           {tab === "panel" ? "Nueva evaluación" : "Ver panel"}</Button>} />
@@ -92,12 +113,31 @@ export default function SaludPage() {
             </Card>
           </div>
         )
+      ) : consentido === null ? (
+        <Card><Empty>Cargando…</Empty></Card>
+      ) : !consentido ? (
+        <Card>
+          <h3 className="font-semibold text-navy mb-2">Aviso de Privacidad</h3>
+          <p className="text-sm text-slate-600">
+            Los datos de salud son <b>datos personales sensibles</b>. Antes de continuar, lee y acepta el{" "}
+            <Link href="/privacidad" className="text-royal underline">Aviso de Privacidad</Link>. Tu evaluación
+            es orientativa y <b>no sustituye una consulta médica</b>. Solo tú puedes ver tu detalle de salud.
+          </p>
+          <label className="flex items-center gap-2 text-sm mt-4">
+            <input type="checkbox" checked={aceptaAviso} onChange={e => setAceptaAviso(e.target.checked)} />
+            He leído y acepto el Aviso de Privacidad.
+          </label>
+          <div className="flex justify-end gap-3 mt-4 pt-4 border-t">
+            <Button variant="ghost" onClick={() => setTab("panel")}>Cancelar</Button>
+            <Button disabled={!aceptaAviso} onClick={aceptarYContinuar}>Aceptar y continuar</Button>
+          </div>
+        </Card>
       ) : (
         <Card>
           <Cuestionario resp={resp} set={set} />
           <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
             <Button variant="ghost" onClick={() => setTab("panel")}>Cancelar</Button>
-            <Button onClick={guardar}>Guardar evaluación</Button>
+            <Button onClick={guardar} disabled={guardando}>Guardar evaluación</Button>
           </div>
         </Card>
       )}

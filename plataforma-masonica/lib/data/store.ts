@@ -1,7 +1,7 @@
 "use client";
 import { DB, seed } from "./seed";
 import {
-  Correspondencia, DocumentoBuzon, Evento, EvaluacionSalud,
+  Correspondencia, DocumentoBuzon, Evento,
   Logia, PerfilProfesional, Trabajo, Usuario, Grado, Rol,
 } from "../types";
 
@@ -75,10 +75,10 @@ export const listPerfilesDirectorio = () =>
   db().perfiles.filter(p => p.mostrar_en_directorio);
 
 // ---------- Salud ----------
+// (Escritura/consentimiento migrados a Supabase: ver lib/data/salud.ts.)
+// listEvaluaciones permanece: lo usan el dashboard y las estadísticas mock aún no cableadas.
 export const listEvaluaciones = (uid: string) =>
   db().evaluaciones.filter(e => e.usuario_id === uid).sort((a,b) => a.fecha.localeCompare(b.fecha));
-export function addEvaluacion(e: EvaluacionSalud) { db().evaluaciones.push(e); persist(); }
-export const listTodasEvaluaciones = () => db().evaluaciones;
 
 // ---------- Eventos ----------
 export function listEventos(logiaId: string): Evento[] {
