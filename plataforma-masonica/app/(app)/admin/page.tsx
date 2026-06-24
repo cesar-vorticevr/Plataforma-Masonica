@@ -2,17 +2,13 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { esGlobal } from "@/lib/roles";
-import { DATA_MODE } from "@/lib/supabase/client";
 import { Card, PageTitle, Button, Input, Select, Badge, Modal } from "@/components/ui";
 import {
   adminListLogias, adminGetLogia, adminListUsuarios, adminValidar, adminSetEstado,
   adminSetRol, adminCambiarPalabra,
 } from "@/lib/data/identidad";
-import { listLogias, crearLogia, crearUsuario, actualizarUsuario, getGenerales } from "@/lib/data/store";
 import { Grado, GRADO_LABEL, ROL_LABEL, Usuario, Logia } from "@/lib/types";
 import { fecha } from "@/lib/format";
-
-const SB = DATA_MODE === "supabase";
 
 export default function Admin() {
   const { user } = useAuth();
@@ -61,7 +57,6 @@ function AdminInner({ user }: { user: Usuario }) {
           </Card>
         )}
         <PalabraClave logia={logia} onSave={refresh} />
-        {global && !SB && <AltaRapida onDone={refresh} />}
       </div>
 
       <Card className="p-0 overflow-hidden">
@@ -102,7 +97,6 @@ function UsuarioRow({ u, onChange }: { u: Usuario; onChange: () => void }) {
 function GestionUsuario({ u, onClose }: { u: Usuario; onClose: () => void }) {
   const [grado, setGrado] = useState<Grado>(u.grado ?? "aprendiz");
   const [guardando, setGuardando] = useState(false);
-  const g = SB ? undefined : getGenerales(u.id);
 
   async function accion(fn: () => Promise<void>) {
     setGuardando(true);
@@ -114,14 +108,7 @@ function GestionUsuario({ u, onClose }: { u: Usuario; onClose: () => void }) {
       <div className="space-y-4">
         <div className="rounded-lg bg-slate-50 p-3 text-sm">
           <div className="font-medium text-slate-700 mb-1">Generales (solo administradores)</div>
-          {SB ? (
-            <div className="text-slate-400 text-xs">Módulo de Generales en preparación (próximo corte).</div>
-          ) : g ? (
-            <div className="text-slate-600 text-xs space-y-0.5">
-              <div>Nacimiento: {fecha(g.fecha_nacimiento)} · Tel: {g.telefono ?? "—"}</div>
-              <div>Emergencia: {g.contacto_emergencia_nombre ?? "—"} ({g.contacto_emergencia_tel ?? "—"})</div>
-            </div>
-          ) : <div className="text-slate-400 text-xs">El hermano aún no llena sus generales.</div>}
+          <div className="text-slate-400 text-xs">Módulo de Generales en preparación (próximo corte).</div>
         </div>
 
         <div>
@@ -153,69 +140,22 @@ function GestionUsuario({ u, onClose }: { u: Usuario; onClose: () => void }) {
 }
 
 function PalabraClave({ logia, onSave }: { logia: Logia; onSave: () => void }) {
-  // En modo supabase no se muestra el hash: el campo arranca vacío para fijar una nueva.
-  const [val, setVal] = useState(SB ? "" : logia.palabra_clave);
+  // No se muestra el hash: el campo arranca vacío para fijar una nueva palabra clave.
+  const [val, setVal] = useState("");
   const [guardando, setGuardando] = useState(false);
   async function guardar() {
-    if (SB && !val) return;
+    if (!val) return;
     setGuardando(true);
-    try { await adminCambiarPalabra(logia.id, val); onSave(); } finally { setGuardando(false); }
+    try { await adminCambiarPalabra(logia.id, val); setVal(""); onSave(); } finally { setGuardando(false); }
   }
   return (
     <Card>
       <h3 className="font-semibold text-navy mb-2 text-sm">Palabra clave de la logia</h3>
       <div className="flex gap-2">
-        <Input value={val} onChange={e => setVal(e.target.value)} placeholder={SB ? "Nueva palabra clave" : ""} />
+        <Input value={val} onChange={e => setVal(e.target.value)} placeholder="Nueva palabra clave" />
         <Button onClick={guardar} disabled={guardando}>Guardar</Button>
       </div>
       <p className="text-xs text-slate-400 mt-1">Controla quién puede registrarse en esta logia.</p>
-    </Card>
-  );
-}
-
-// Alta de logias y secretarios (solo modo demo por ahora; en supabase requiere route handler).
-function AltaRapida({ onDone }: { onDone: () => void }) {
-  const [open, setOpen] = useState<"logia" | "secretario" | null>(null);
-  const logias = listLogias();
-  const [lf, setLf] = useState({ nombre: "", numero: "", oriente: "" });
-  const [sf, setSf] = useState({ nombre: "", email: "", logiaId: logias[0]?.id ?? "" });
-  return (
-    <Card>
-      <h3 className="font-semibold text-navy mb-2 text-sm">Altas</h3>
-      <div className="grid grid-cols-2 gap-2">
-        <Button variant="ghost" onClick={() => setOpen("logia")}>+ Logia</Button>
-        <Button variant="ghost" onClick={() => setOpen("secretario")}>+ Secretario</Button>
-      </div>
-      {open === "logia" && (
-        <Modal open onClose={() => setOpen(null)} title="Alta de logia">
-          <div className="space-y-3">
-            <Input label="Nombre" value={lf.nombre} onChange={e => setLf(s => ({ ...s, nombre: e.target.value }))} />
-            <Input label="Número" type="number" value={lf.numero} onChange={e => setLf(s => ({ ...s, numero: e.target.value }))} />
-            <Input label="Oriente" value={lf.oriente} onChange={e => setLf(s => ({ ...s, oriente: e.target.value }))} />
-            <div className="flex justify-end gap-2"><Button variant="ghost" onClick={() => setOpen(null)}>Cancelar</Button>
-              <Button onClick={() => { if (lf.nombre) { crearLogia({ nombre: lf.nombre, numero: Number(lf.numero) || 0, oriente: lf.oriente }); setOpen(null); onDone(); } }}>Crear</Button></div>
-          </div>
-        </Modal>
-      )}
-      {open === "secretario" && (
-        <Modal open onClose={() => setOpen(null)} title="Alta de secretario">
-          <div className="space-y-3">
-            <Input label="Nombre" value={sf.nombre} onChange={e => setSf(s => ({ ...s, nombre: e.target.value }))} />
-            <Input label="Correo" value={sf.email} onChange={e => setSf(s => ({ ...s, email: e.target.value }))} />
-            <Select label="Logia" value={sf.logiaId} onChange={e => setSf(s => ({ ...s, logiaId: e.target.value }))}>
-              {logias.map(l => <option key={l.id} value={l.id}>{l.nombre}</option>)}
-            </Select>
-            <div className="flex justify-end gap-2"><Button variant="ghost" onClick={() => setOpen(null)}>Cancelar</Button>
-              <Button onClick={() => {
-                if (sf.nombre && sf.email) {
-                  const nu = crearUsuario({ nombre: sf.nombre, email: sf.email, logia_id: sf.logiaId, rol: "secretario" });
-                  actualizarUsuario(nu.id, { estado: "validado", grado: "maestro" });
-                  setOpen(null); onDone();
-                }
-              }}>Crear</Button></div>
-          </div>
-        </Modal>
-      )}
     </Card>
   );
 }

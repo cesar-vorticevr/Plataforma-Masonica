@@ -3,24 +3,33 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/client";
 import { NAV } from "./nav";
-import { getLogia, listUsuarios } from "@/lib/data/store";
-import { DATA_MODE } from "@/lib/supabase/client";
 import { ROL_LABEL, GRADO_LABEL } from "@/lib/types";
 import { initials } from "@/lib/format";
 
+interface LogiaInfo { nombre: string; numero: number; oriente: string }
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, logout, switchDemo } = useAuth();
+  const { user, logout } = useAuth();
   const path = usePathname();
   const [open, setOpen] = useState(false);
   const [, setNotif] = useState(0);
+  const [logia, setLogia] = useState<LogiaInfo | null>(null);
+
   useEffect(() => {
     const h = () => setNotif(n => n + 1);
     window.addEventListener("notif", h);
     return () => window.removeEventListener("notif", h);
   }, []);
+
+  useEffect(() => {
+    if (!user?.logia_id) return;
+    createClient().from("logias").select("nombre,numero,oriente").eq("id", user.logia_id).single()
+      .then(({ data }) => setLogia((data as LogiaInfo) ?? null));
+  }, [user?.logia_id]);
+
   if (!user) return null;
-  const logia = getLogia(user.logia_id);
   const items = NAV.filter(i => i.show(user));
 
   return (
@@ -45,7 +54,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
         <div className="p-3 border-t border-white/10 text-xs text-white/50">
-          v1.0 · Modo demostración
+          v1.0
         </div>
       </aside>
 
@@ -57,7 +66,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             {logia ? `Resp.·. Log.·. ${logia.nombre} N.°${logia.numero} · Or.·. ${logia.oriente}` : ""}
           </div>
           <div className="flex items-center gap-3 ml-auto">
-            {DATA_MODE !== "supabase" && <DemoSwitcher current={user.id} onSwitch={switchDemo} />}
             <div className="flex items-center gap-2">
               <div className="w-9 h-9 rounded-full bg-navy text-white grid place-items-center text-sm font-semibold">{initials(user.nombre)}</div>
               <div className="hidden sm:block leading-tight">
@@ -71,16 +79,5 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <main className="p-4 lg:p-8 max-w-6xl w-full mx-auto">{children}</main>
       </div>
     </div>
-  );
-}
-
-function DemoSwitcher({ current, onSwitch }: { current: string; onSwitch: (id: string) => void }) {
-  const usuarios = listUsuarios();
-  return (
-    <select value={current} onChange={e => onSwitch(e.target.value)}
-      title="Cambiar de usuario (solo demostración)"
-      className="text-xs border border-slate-300 rounded-lg px-2 py-1.5 bg-amber-50 text-slate-700 max-w-[170px]">
-      {usuarios.map(u => <option key={u.id} value={u.id}>{ROL_LABEL[u.rol]}: {u.nombre.split("(")[0].trim()}</option>)}
-    </select>
   );
 }

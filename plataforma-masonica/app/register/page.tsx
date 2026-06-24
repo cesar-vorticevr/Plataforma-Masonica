@@ -3,8 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import { createClient, DATA_MODE } from "@/lib/supabase/client";
-import { listLogias } from "@/lib/data/store";
+import { createClient } from "@/lib/supabase/client";
 import AuthCard from "@/components/layout/AuthCard";
 import { Button, Input, Select } from "@/components/ui";
 
@@ -13,16 +12,15 @@ interface LogiaOpcion { id: string; nombre: string; numero: number; oriente: str
 export default function RegisterPage() {
   const { registrar } = useAuth();
   const router = useRouter();
-  const [logias, setLogias] = useState<LogiaOpcion[]>(() => DATA_MODE === "supabase" ? [] : listLogias());
+  const [logias, setLogias] = useState<LogiaOpcion[]>([]);
   const [f, setF] = useState({
-    palabraGeneral: "", logiaId: DATA_MODE === "supabase" ? "" : (listLogias()[0]?.id ?? ""), palabraLogia: "",
+    palabraGeneral: "", logiaId: "", palabraLogia: "",
     nombre: "", email: "", password: "", confirm: "",
   });
   const [error, setError] = useState("");
   const set = (k: string, v: string) => setF(s => ({ ...s, [k]: v }));
 
   useEffect(() => {
-    if (DATA_MODE !== "supabase") return;
     createClient().from("logias").select("id,nombre,numero,oriente").order("numero")
       .then(({ data }) => {
         const ls = (data ?? []) as LogiaOpcion[];

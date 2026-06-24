@@ -3,7 +3,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import { DATA_MODE } from "@/lib/supabase/client";
 import AuthCard from "@/components/layout/AuthCard";
 import { Button, Input } from "@/components/ui";
 
@@ -38,11 +37,6 @@ export default function LoginPage() {
       <p className="text-sm text-slate-500 mt-6 text-center">
         ¿Aún no tienes cuenta? <Link href="/register" className="text-royal font-medium">Regístrate</Link>
       </p>
-      {DATA_MODE !== "supabase" && (
-        <div className="mt-6 rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">
-          <b>Demo:</b> usa cualquiera de estos correos (sin contraseña real): master@demo.mx · gransecretario@demo.mx · secretario@demo.mx · tesorero@demo.mx · maestro@demo.mx · companero@demo.mx · aprendiz@demo.mx
-        </div>
-      )}
     </AuthCard>
   );
 }

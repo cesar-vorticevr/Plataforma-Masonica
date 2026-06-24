@@ -57,7 +57,7 @@ plataforma-masonica/
     types.ts        Tipos centrales del dominio + labels (ROL_LABEL, GRADO_LABEL, …)
     roles.ts        RBAC en cliente: can.*, accesoCompleto(), puedeVerTrabajo()
     health.ts       Cuestionario + lógica de semáforo/etiquetas (ORIENTATIVA)
-    auth.tsx        Contexto de sesión (HOY: mock; sustituir por supabase.auth)
+    auth.tsx        Contexto de sesión (Supabase Auth)
     data/
       store.ts      Capa de acceso a datos (HOY: localStorage en memoria)
       seed.ts       Datos de demostración
@@ -82,39 +82,47 @@ npm run lint
 npm run build
 ```
 
-### Dos modos de datos — `NEXT_PUBLIC_DATA_MODE`
+### Arranque local (siempre Supabase)
 
-| Modo | Valor | Comportamiento |
-|---|---|---|
-| **Demo** (por defecto) | `mock` | App funcional con datos en `localStorage`. Sin Supabase. Selector de usuario arriba a la derecha para cambiar de rol al vuelo. Borra el localStorage para reiniciar. |
-| **Producción** | `supabase` | Usa un proyecto real de Supabase. Requiere `.env.local` con URL y anon key, y ejecutar `supabase/schema.sql`. |
+**La app siempre usa Supabase; no hay modo mock.** En local, el Supabase CLI levanta el stack (Docker):
 
-Usuarios de demo (sin contraseña real): `master@demo.mx`, `gransecretario@demo.mx`,
-`secretario@demo.mx`, `tesorero@demo.mx`, `maestro@demo.mx`, `companero@demo.mx`,
-`aprendiz@demo.mx`.
+```bash
+cp .env.local.example .env.local      # pega URL + keys de `npx supabase status`
+npx supabase start                    # Postgres/Auth/Storage… + migraciones + seed
+npm run crear:master                  # crea el administrador maestro (contraseña impresa una vez)
+npm run dev
+```
+
+Primer acceso: el **maestro** (`npm run crear:master` → `scripts/crear-master.mjs`; contraseña
+generada con `crypto.randomBytes` y entregada a Supabase Auth, nunca pre-hasheada ni versionada), o
+registrarse en `/register` (clave demo local `BOAZ`) y ser validado por un secretario. Detalle del
+entorno en §8.4; producción con `.env.prod` (gitignored) + `supabase db push`.
+
+> `lib/data/store.ts` y `seed.ts` (datos mock) se **conservan temporalmente** como respaldo de los
+> módulos aún no cableados a Supabase; se retiran **módulo por módulo** conforme cada fase los migra.
 
 ---
 
-## 4. Arquitectura: estado actual vs. producción
+## 4. Arquitectura: qué está cableado a Supabase
 
-El estado actual es una **demo completa y navegable**, con el modelo de permisos, la lógica de
-salud y un **esquema RLS de producción ya escrito**. Lo que falta es **cablear producción**.
-Cada punto está marcado en el código y en el README de la app.
+**Auth e identidad ya están sobre Supabase** (registro, login, sesión SSR vía `proxy.ts`, validación
+por secretario, RLS, anti-escalada). Los **demás módulos** (salud, generales, tesorería, tenidas,
+eventos, directorio, mensajes, trabajos, buzón, correspondencia, cumplimientos, estadísticas,
+dashboard) **aún leen de `lib/data/store.ts`** (mock en memoria) y se migran a Supabase **módulo por
+módulo** en las fases siguientes.
 
 ```
-                 HOY (mock)                      PRODUCCIÓN (supabase)
-auth          lib/auth.tsx (sesión falsa)  →  supabase.auth.signInWithPassword /
-                                               signInWithOAuth({provider:'google'}) / signUp
-datos         lib/data/store.ts (memoria)  →  supabase.from('tabla')…  (1 tabla por función)
-archivos      solo nombre de archivo       →  Supabase Storage (PDF, Word, PNG, JPG)
-permisos      lib/roles.ts (cliente)       →  RLS en schema.sql (servidor)  ✅ ya escrito
-salud agreg.  cálculo en cliente           →  vistas/funciones security definer (prevalencia
-                                               sin exponer filas individuales)
+                 ESTADO                          DESTINO (al cablear cada módulo)
+auth/identidad   ✅ Supabase                      —
+datos módulos    lib/data/store.ts (memoria)  →   supabase.from('tabla')… con RLS
+archivos         solo nombre de archivo       →   Supabase Storage (PDF, Word, PNG, JPG)
+permisos         lib/roles.ts (UX) + RLS      →   RLS en migraciones (servidor)  ✅
+salud agreg.     —                            →   vistas/funciones security definer
 ```
 
-**Regla de oro al migrar a Supabase:** la seguridad **debe** aplicarse en el servidor (RLS),
-no solo en la interfaz. `lib/roles.ts` es para UX (mostrar/ocultar); la verdad de acceso vive
-en `supabase/schema.sql`. Las dos capas deben mantenerse consistentes.
+**Regla de oro:** la seguridad **debe** aplicarse en el SERVIDOR (RLS), no solo en la interfaz.
+`lib/roles.ts` es para UX (mostrar/ocultar); la verdad de acceso vive en las **migraciones**
+(`supabase/migrations/`). Las dos capas deben mantenerse consistentes.
 
 ---
 

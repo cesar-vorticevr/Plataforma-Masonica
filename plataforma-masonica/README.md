@@ -1,37 +1,27 @@
 # Plataforma Masónica · Gran Logia de Estado "Restauración"
 
-Aplicación web **Next.js 16 + React 19 + TypeScript + Tailwind**, lista para conectar a **Supabase**
-(autenticación, base de datos PostgreSQL y almacenamiento).
-
-Funciona en **dos modos**, controlados por la variable `NEXT_PUBLIC_DATA_MODE`:
-
-- `mock` (por defecto): la app **ya funciona** con datos de demostración guardados en el navegador.
-  No necesita Supabase. Ideal para revisar el producto.
-- `supabase`: usa tu proyecto real de Supabase.
+Aplicación web **Next.js 16 + React 19 + TypeScript + Tailwind** sobre **Supabase**
+(autenticación, PostgreSQL y almacenamiento). **La app siempre usa Supabase** — no hay modo demo/mock:
+en local vía el Supabase CLI (Docker) y en producción con tu proyecto Supabase.
 
 ---
 
-## 1. Probar la demo en tu máquina
+## 1. Arrancar en local
+
+Requiere **Docker** corriendo. Desde `plataforma-masonica/`:
 
 ```bash
 npm install
-npm run dev
+cp .env.local.example .env.local
+npx supabase start          # Supabase local (Docker) + migraciones + seed
+npx supabase status         # copia API URL y keys (anon + service role) a .env.local
+npm run crear:master        # crea el administrador maestro (imprime su contraseña UNA vez)
+npm run dev                 # http://localhost:3000  → inicia sesión con el maestro
 ```
 
-Abre http://localhost:3000. Entra con cualquiera de estos correos (sin contraseña real):
-
-| Correo | Rol |
-|---|---|
-| master@demo.mx | Administrador Master |
-| gransecretario@demo.mx | Gran Secretario |
-| secretario@demo.mx | Secretario de logia |
-| tesorero@demo.mx | Tesorero |
-| maestro@demo.mx / companero@demo.mx / aprendiz@demo.mx | Hermanos (distinto grado) |
-
-Arriba a la derecha hay un **selector de usuario** (solo en modo demo) para cambiar de rol al vuelo
-y ver cómo cambian los permisos y la navegación.
-
-> Para reiniciar los datos de la demo, borra el almacenamiento local del navegador.
+Para entrar por primera vez usa el **maestro** (`crear:master`), o **regístrate** en `/register`
+(palabra clave demo local: `BOAZ`, elige logia) y pide a un secretario/maestro que te valide.
+Reconstruir la base: `npx supabase db reset`. Detener: `npx supabase stop`. Detalle del entorno: §2.
 
 ---
 
