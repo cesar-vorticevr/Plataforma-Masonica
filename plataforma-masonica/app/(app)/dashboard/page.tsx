@@ -4,11 +4,12 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { accesoCompleto, esAdminLogia } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/client";
-import { Card, PageTitle, Stat } from "@/components/ui";
-import { ROL_LABEL, GRADO_LABEL, EvaluacionSalud, Usuario } from "@/lib/types";
+import { Card, PageTitle, Stat, Badge } from "@/components/ui";
+import { ROL_LABEL, GRADO_LABEL, EvaluacionSalud, Evento, Usuario } from "@/lib/types";
 import { listEvaluaciones } from "@/lib/data/salud";
 import { getCapita, listPagos } from "@/lib/data/tesoreria";
 import { listTenidas, listAsistencias } from "@/lib/data/tenidas";
+import { listEventos } from "@/lib/data/eventos";
 import { rangoCapitas, cumplimiento } from "@/lib/capitas";
 import { fecha } from "@/lib/format";
 
@@ -30,13 +31,14 @@ function DashboardInner({ user }: { user: Usuario }) {
   const [cap, setCap] = useState({ pagados: 0, count: 0, pct: 0 });
   const [asis, setAsis] = useState({ presentes: 0, total: 0, pct: 0 });
   const [conteo, setConteo] = useState<number | null>(null);
+  const [eventos, setEventos] = useState<Evento[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let activo = true;
     (async () => {
       const sb = createClient();
-      const [lg, evals, capita, pagos, tenidas, asistencias, cnt] = await Promise.all([
+      const [lg, evals, capita, pagos, tenidas, asistencias, cnt, evs] = await Promise.all([
         sb.from("logias").select("nombre,oriente").eq("id", user.logia_id).single().then(r => r.data as LogiaInfo | null),
         listEvaluaciones(user.id),
         getCapita(user.logia_id),
@@ -46,8 +48,10 @@ function DashboardInner({ user }: { user: Usuario }) {
         puedeContar
           ? sb.from("perfiles").select("id", { count: "exact", head: true }).eq("logia_id", user.logia_id).then(r => r.count ?? 0)
           : Promise.resolve(null),
+        listEventos(),
       ]);
       if (!activo) return;
+      setEventos(evs.slice(0, 3));
       setLogia(lg);
       setUltima(evals.length ? evals[evals.length - 1] : null);
       const c = cumplimiento(rangoCapitas(user.fecha_inicio, user.fecha_registro, anio), pagos);
@@ -100,9 +104,23 @@ function DashboardInner({ user }: { user: Usuario }) {
         <Card>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-navy">Próximos eventos</h3>
-            <Link href="/eventos" className="text-royal text-sm">Ver eventos</Link>
+            <Link href="/eventos" className="text-royal text-sm">Ver todos</Link>
           </div>
-          <p className="text-slate-400 text-sm">El módulo de eventos estará disponible próximamente.</p>
+          {eventos.length === 0 ? <p className="text-slate-400 text-sm">Sin eventos.</p> :
+            <ul className="space-y-3">
+              {eventos.map(e => (
+                <li key={e.id} className="flex items-start gap-3">
+                  <div className="text-center bg-slate-100 rounded-lg px-2 py-1 text-xs">
+                    <div className="font-bold text-navy">{new Date(e.fecha_evento).getDate()}</div>
+                    <div className="text-slate-500">{new Date(e.fecha_evento).toLocaleDateString("es-MX", { month: "short" })}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium">{e.titulo}</div>
+                    <Badge color={e.alcance === "global" ? "gold" : "blue"}>{e.alcance === "global" ? "Todas las logias" : "Mi logia"}</Badge>
+                  </div>
+                </li>
+              ))}
+            </ul>}
         </Card>
 
         <Card>

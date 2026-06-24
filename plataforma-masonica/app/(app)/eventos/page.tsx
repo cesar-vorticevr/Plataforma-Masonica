@@ -3,22 +3,34 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { can } from "@/lib/roles";
 import { Card, PageTitle, Button, Input, Textarea, Select, Badge, Empty, Modal } from "@/components/ui";
-import { listEventos, addEvento, getUsuario, marcarEventosVistos } from "@/lib/data/store";
+import { listEventos, addEvento } from "@/lib/data/eventos";
+import { Evento, Usuario } from "@/lib/types";
 import { fecha } from "@/lib/format";
 
 export default function Eventos() {
   const { user } = useAuth();
-  const [open, setOpen] = useState(false);
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    if (user) { marcarEventosVistos(user.id); window.dispatchEvent(new Event("notif")); }
-  }, [user]);
   if (!user) return null;
-  const eventos = listEventos(user.logia_id);
+  return <EventosInner user={user} />;
+}
+
+function EventosInner({ user }: { user: Usuario }) {
+  const [eventos, setEventos] = useState<Evento[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
+  const [reload, setReload] = useState(0);
   const puede = can.publicarEventos(user);
+  const global = user.rol === "gran_secretario" || user.rol === "master";
+
+  useEffect(() => {
+    let activo = true;
+    listEventos().then(e => { if (activo) { setEventos(e); setLoading(false); } });
+    return () => { activo = false; };
+  }, [reload]);
+
+  if (loading) return <div className="min-h-[40vh] grid place-items-center text-slate-400">Cargando…</div>;
 
   return (
-    <div key={tick}>
+    <div>
       <PageTitle title="Eventos y anuncios" subtitle="Anuncios de tu logia y de toda la Gran Logia."
         action={puede ? <Button onClick={() => setOpen(true)}>Publicar evento</Button> : undefined} />
       {eventos.length === 0 ? <Card><Empty>No hay eventos publicados.</Empty></Card> : (
@@ -36,15 +48,15 @@ export default function Eventos() {
                     <Badge color={e.alcance === "global" ? "gold" : "blue"}>{e.alcance === "global" ? "Todas las logias" : "Mi logia"}</Badge>
                   </div>
                   <p className="text-sm text-slate-600 mt-1">{e.descripcion}</p>
-                  <p className="text-xs text-slate-400 mt-2">{fecha(e.fecha_evento)} · por {getUsuario(e.autor_id)?.nombre.split("(")[0].trim()}</p>
+                  <p className="text-xs text-slate-400 mt-2">{fecha(e.fecha_evento)}</p>
                 </div>
               </div>
             </Card>
           ))}
         </div>
       )}
-      {open && <Crear userId={user.id} logiaId={user.logia_id} global={user.rol === "gran_secretario" || user.rol === "master"}
-        onClose={() => { setOpen(false); setTick(t => t + 1); }} />}
+      {open && <Crear userId={user.id} logiaId={user.logia_id} global={global}
+        onClose={() => { setOpen(false); setReload(x => x + 1); }} />}
     </div>
   );
 }
@@ -52,13 +64,23 @@ export default function Eventos() {
 function Crear({ userId, logiaId, global, onClose }:
   { userId: string; logiaId: string; global: boolean; onClose: () => void }) {
   const [f, setF] = useState({ titulo: "", descripcion: "", fecha_evento: "", alcance: "logia" });
+  const [error, setError] = useState("");
+  const [guardando, setGuardando] = useState(false);
   const set = (k: string, v: string) => setF(s => ({ ...s, [k]: v }));
-  function guardar() {
+
+  async function guardar() {
     if (!f.titulo || !f.fecha_evento) return;
-    addEvento({ titulo: f.titulo, descripcion: f.descripcion, fecha_evento: new Date(f.fecha_evento).toISOString(),
-      alcance: f.alcance as "logia" | "global", logia_id: f.alcance === "global" ? null : logiaId, autor_id: userId });
+    setGuardando(true);
+    const alcance = f.alcance === "global" ? "global" : "logia";
+    const { error } = await addEvento({
+      titulo: f.titulo, descripcion: f.descripcion, fecha_evento: new Date(f.fecha_evento).toISOString(),
+      alcance, logia_id: alcance === "global" ? null : logiaId, autor_id: userId,
+    });
+    setGuardando(false);
+    if (error) { setError("No se pudo publicar el evento."); return; }
     onClose();
   }
+
   return (
     <Modal open onClose={onClose} title="Publicar evento">
       <div className="space-y-3">
@@ -69,7 +91,8 @@ function Crear({ userId, logiaId, global, onClose }:
           <option value="logia">Solo mi logia</option>
           {global && <option value="global">Todas las logias</option>}
         </Select>
-        <div className="flex justify-end gap-2 pt-2"><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={guardar}>Publicar</Button></div>
+        {error && <p className="text-rose-600 text-sm">{error}</p>}
+        <div className="flex justify-end gap-2 pt-2"><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={guardar} disabled={guardando}>Publicar</Button></div>
       </div>
     </Modal>
   );
