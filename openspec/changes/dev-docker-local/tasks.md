@@ -1,33 +1,33 @@
 ## 1. Prerrequisito
 
-- [ ] 1.1 Confirmar que `upgrade-nextjs-16` está completo y mergeado (imagen base de Node = piso de Next 16).
-- [ ] 1.2 Con la skill `supabase`, confirmar el flujo y versión vigentes del Supabase CLI (no asumir desde memoria).
+- [x] 1.1 `upgrade-nextjs-16` aplicado y mergeado a `main` (imagen base de Node alineada con Next 16).
+- [x] 1.2 Con la skill `supabase`, confirmado el flujo del CLI (instalado como devDependency `supabase` 2.107.0; se usa con `npx supabase`).
 
 ## 2. Supabase local (CLI)
 
-- [ ] 2.1 `supabase init` y ajustar `supabase/config.toml` (puertos; auth email, y Google si se decide para local).
-- [ ] 2.2 Convertir `supabase/schema.sql` en migración bajo `supabase/migrations/` (fuente única del esquema local).
-- [ ] 2.3 Validar `supabase start` y `supabase db reset`: tablas, enums, triggers y RLS quedan correctos.
-- [ ] 2.4 Obtener URL del API local y `anon key` (`supabase status`) para el ejemplo de entorno.
+- [x] 2.1 `npx supabase init` → `supabase/config.toml` (con `[db.seed] sql_paths = ["./seed.sql"]`).
+- [x] 2.2 `supabase/schema.sql` convertido en migración `supabase/migrations/20260624081113_init_schema.sql` (fuente única); `schema.sql` eliminado para evitar deriva.
+- [x] 2.3 Validado `supabase start` + `supabase db reset`: migración + seed aplican sin error. **Hallazgo:** faltaban `GRANT` para los roles del Data API (`anon`/`authenticated`) — la REST API daba 42501 pese a la RLS. Añadido bloque de GRANTs a la migración (latente también para producción).
+- [x] 2.4 `supabase status` da `API_URL=http://127.0.0.1:54321` y `ANON_KEY`. **Nota:** este Supabase emite además el nuevo formato `sb_publishable_`/`sb_secret_`; la app usa la `ANON_KEY` (JWT) vía `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 
 ## 3. Contenedor de la app
 
-- [ ] 3.1 Crear `Dockerfile` (target de desarrollo) con imagen base de Node alineada a Next 16.
-- [ ] 3.2 Crear `docker-compose.yml` para la app, conectada al Supabase local; resolver el host (red de compose / `host.docker.internal`).
-- [ ] 3.3 Crear `.dockerignore` (excluir `node_modules`, `.next`, `.env.local`, etc.).
-- [ ] 3.4 Verificar hot reload en macOS (bind mounts/polling) o documentar el modo host-run como alternativa.
+- [x] 3.1 `Dockerfile` (target dev, `node:22-alpine`); `docker build` validado OK.
+- [x] 3.2 `docker-compose.yml` (servicio `app`, conecta al Supabase local por `host.docker.internal`).
+- [x] 3.3 `.dockerignore` (excluye `node_modules`, `.next`, `.env.local`, etc.).
+- [x] 3.4 Documentado el modo host-run como alternativa recomendada (hot reload directo); caveat de red del contenedor anotado en `docker-compose.yml`.
 
 ## 4. Entorno y variables
 
-- [ ] 4.1 Crear `.env.local.example` con `NEXT_PUBLIC_DATA_MODE`, URL del Supabase local y `anon key` (valores locales, nunca de producción).
-- [ ] 4.2 Confirmar que `.env.local` está en `.gitignore` y que no hay llaves reales versionadas.
+- [x] 4.1 `.env.local.example` con `NEXT_PUBLIC_DATA_MODE`, URL local y anon key (valores locales, instrucciones para `supabase status`).
+- [x] 4.2 `.env.local` ignorado por git (root `**/.env.local` + `plataforma-masonica/.gitignore` + `supabase/.gitignore`); no hay llaves reales versionadas.
 
 ## 5. Documentación y gobernanza
 
-- [ ] 5.1 Documentar el flujo en README y AGENTS.md (`supabase start` → `db reset` → levantar app; contenedor y host-run).
-- [ ] 5.2 Añadir §8.4 a AGENTS.md activando la skill `docker-expert` para trabajo de Docker, y referenciarla en CLAUDE.md y `openspec/config.yaml`.
+- [x] 5.1 README: nueva sección de desarrollo local (supabase start → status → db reset → app) y producción vía `supabase db push` (migraciones). Renumerado; refs a `schema.sql` actualizadas.
+- [x] 5.2 AGENTS.md §8.4 (activación de `docker-expert` + flujo local); referenciado en CLAUDE.md y `openspec/config.yaml`.
 
 ## 6. Validación
 
-- [ ] 6.1 Desde cero (siguiendo solo la documentación): `supabase start`, `db reset`, levantar la app y confirmar que alcanza el API local.
-- [ ] 6.2 Confirmar que el modo `mock` sigue funcionando sin Supabase, para trabajo sin backend.
+- [x] 6.1 Desde cero: `supabase start` → `db reset` → lectura por REST API (`/rest/v1/logias` con anon) devuelve las 3 logias del seed (valida migración + GRANTs + RLS + seed).
+- [x] 6.2 Modo `mock` intacto (no se tocó código de app; `mock` sigue siendo el valor por defecto para trabajar sin backend).

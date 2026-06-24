@@ -56,6 +56,11 @@ context: |
   docs/changelog (no confiar en conocimiento previo), RLS por logia/grado, nunca user_metadata para
   autorización. Ver AGENTS.md §8.3.
 
+  Desarrollo local (AGENTS.md §8.4): Supabase vía CLI (npx supabase start, su propio stack Docker) +
+  app en host (npm run dev) o contenedor (docker compose). Esquema en supabase/migrations/ (fuente
+  única; se eliminó schema.sql), semilla en supabase/seed.sql; mantener migraciones sincronizadas con
+  lib/types.ts. Skill docker-expert para trabajo de Docker. Producción = Vercel (sin Docker).
+
   Roadmap por fases: 0 Definiciones · 1 (MVP) Censo+identidad · 2 Administración (tesorería,
   tenidas, cumplimientos) · 3 Comunicación · 4 Red profesional · 5 Mejoras. Alinea cada cambio
   con una fase; el trabajo real es cablear producción empezando por la Fase 1.

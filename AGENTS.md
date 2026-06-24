@@ -289,6 +289,31 @@ Reglas (las skills las refuerzan y deben respetarse junto con §7):
 - Las skills **corren con permisos completos** (Snyk: supabase Med, supabase-postgres-best-practices Low);
   revísalas antes de ejecutar sus scripts.
 
+### 8.4 Entorno de desarrollo local (Docker) y skill `docker-expert`
+
+El desarrollo contra Supabase real se hace **en local**, vía el **Supabase CLI** (instalado como
+devDependency; corre con `npx supabase ...`), que levanta su propio stack en Docker. La app puede
+correr en el host (recomendado) o en su propio contenedor.
+
+**Flujo de arranque** (desde `plataforma-masonica/`):
+
+1. `cp .env.local.example .env.local` y rellena la `anon key` (paso 4).
+2. `npx supabase start` — levanta Postgres/Auth/Storage/Studio/… (Docker). Aplica migraciones + `seed.sql`.
+3. `npx supabase status` — copia `API URL` (`http://localhost:54321`) y `anon key` a `.env.local`.
+4. App: `npm run dev` en el host (más simple), **o** `docker compose up` (contenedor; ver caveat de red en `docker-compose.yml`).
+5. `npx supabase db reset` — reconstruye el esquema + semilla desde cero cuando haga falta.
+
+**Fuente de verdad del esquema:** `supabase/migrations/` (no hay `schema.sql`; se eliminó para evitar
+deriva). La semilla local vive en `supabase/seed.sql`. Mantén las migraciones **sincronizadas** con
+`lib/types.ts` (§8) y cuida el **rendimiento de RLS** (§8.3). Toda migración nueva: `npx supabase migration new <nombre>`.
+
+**Skill `docker-expert`** (local, versionada): **úsala para trabajo de Docker** — Dockerfile,
+`docker-compose.yml`, optimización de imágenes/capas, networking de contenedores. Para el stack de
+Supabase local, manda la skill `supabase` (es el CLI quien orquesta esos contenedores, no se escriben a mano).
+
+**Producción NO usa Docker:** el despliegue productivo es Vercel (Opción A). Estos contenedores son
+solo para desarrollo local reproducible.
+
 ---
 
 ## 9. Flujo de trabajo: SDD con OpenSpec

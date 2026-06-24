@@ -1,0 +1,28 @@
+# Entorno de desarrollo OPCIONAL: corre la app Next.js en un contenedor.
+#
+# El stack de Supabase local NO se define aquí: lo gestiona el Supabase CLI
+# (`npx supabase start`), que levanta sus propios contenedores (Postgres, Auth,
+# Storage, Studio, etc.). Este compose solo añade la app y la conecta a ese stack.
+#
+# Alternativa más simple y recomendada hoy: correr la app en el host con
+# `npm run dev` (ver README). El contenedor es más útil cuando la app haga
+# render en servidor (Fase 1); para trabajo client-side, el host es más directo.
+services:
+  app:
+    build:
+      context: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.local
+    environment:
+      # Desde dentro del contenedor, el Supabase local del host se alcanza por
+      # host.docker.internal. NOTA: el navegador (en el host) usa la URL de
+      # .env.local (http://localhost:54321); por eso, para trabajo 100% client-side
+      # conviene correr la app en el host. Ver README §Desarrollo local.
+      NEXT_PUBLIC_SUPABASE_URL: http://host.docker.internal:54321
+    volumes:
+      - .:/app
+      - /app/node_modules
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

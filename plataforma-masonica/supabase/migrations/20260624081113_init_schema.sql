@@ -263,11 +263,10 @@ create policy asis_write on asistencias for all using (es_admin()) with check (t
 
 create policy consent_rw on consentimientos for all using (usuario_id = auth.uid()) with check (usuario_id = auth.uid());
 
--- ------------------------- SEMILLA MÍNIMA ---------------------------
-insert into logias (nombre, numero, oriente) values
-  ('Luz y Verdad', 12, 'Villahermosa'),
-  ('Renacimiento', 27, 'Cárdenas'),
-  ('Hijos del Progreso', 5, 'Comalcalco');
--- Nota: los usuarios se crean al registrarse vía Supabase Auth.
--- Después, asigna manualmente el primer 'master'/'gran_secretario':
---   update perfiles set rol='master', estado='validado', grado='maestro' where email='TU_CORREO';
+-- ------------------- GRANTS PARA EL DATA API ------------------------
+-- Las tablas creadas por SQL no obtienen privilegios automáticos para los roles
+-- del Data API. Sin GRANT, la REST API devuelve 42501 aunque haya políticas RLS.
+-- El GRANT da acceso a la TABLA; la RLS (arriba) sigue controlando qué FILAS se ven.
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on all tables in schema public to anon, authenticated;
+grant usage, select on all sequences in schema public to anon, authenticated;

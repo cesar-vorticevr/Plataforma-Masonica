@@ -35,14 +35,38 @@ y ver cómo cambian los permisos y la navegación.
 
 ---
 
-## 2. Conectar a Supabase (producción) — lo que hace el programador
+## 2. Desarrollo local con Supabase (Docker)
 
-1. Crea un proyecto en https://supabase.com
-2. En **SQL Editor**, ejecuta el archivo [`supabase/schema.sql`](supabase/schema.sql).
-   Crea todas las tablas, los enums, el trigger que genera el perfil al registrarse,
-   y **todas las políticas de seguridad (RLS)** por logia y por grado.
-3. En **Authentication > Providers**, habilita **Email** y **Google** (OAuth).
-4. Copia tus llaves a `.env.local`:
+Requiere **Docker** corriendo. El **Supabase CLI** (ya incluido como devDependency) levanta un
+Supabase completo en local (Postgres, Auth, Storage, Studio…) en contenedores.
+
+```bash
+cd plataforma-masonica
+cp .env.local.example .env.local      # luego pega la anon key (paso 3)
+npx supabase start                    # levanta el stack y aplica migraciones + seed.sql
+npx supabase status                   # muestra API URL (http://localhost:54321) y anon key
+# -> pega NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY en .env.local
+npm run dev                           # app en el host (recomendado)  → http://localhost:3000
+```
+
+- **Reconstruir la base** (esquema + semilla desde cero): `npx supabase db reset`.
+- **App en contenedor** (opcional): `docker compose up` (ver caveat de red en `docker-compose.yml`;
+  para trabajo client-side el host es más directo).
+- **Esquema:** vive en `supabase/migrations/` (fuente única). Nueva migración:
+  `npx supabase migration new <nombre>`. Semilla local: `supabase/seed.sql`.
+- Detener: `npx supabase stop`.
+
+## 3. Conectar a Supabase de producción
+
+1. Crea un proyecto en https://supabase.com y habilita **Email** y **Google** en *Authentication > Providers*.
+2. Enlaza y sube las migraciones:
+
+   ```bash
+   npx supabase link --project-ref <tu-ref>
+   npx supabase db push        # aplica supabase/migrations/ al proyecto remoto
+   ```
+
+3. Copia tus llaves de producción a `.env.local` (NO uses las locales):
 
    ```
    NEXT_PUBLIC_DATA_MODE=supabase
@@ -50,7 +74,7 @@ y ver cómo cambian los permisos y la navegación.
    NEXT_PUBLIC_SUPABASE_ANON_KEY=xxxx
    ```
 
-5. Asigna el primer administrador (en SQL Editor):
+4. Asigna el primer administrador (SQL Editor del proyecto):
 
    ```sql
    update perfiles set rol='master', estado='validado', grado='maestro'
@@ -71,7 +95,7 @@ y ver cómo cambian los permisos y la navegación.
 
 ---
 
-## 3. Estructura
+## 4. Estructura
 
 ```
 app/                  Páginas (App Router)
@@ -83,10 +107,12 @@ app/                  Páginas (App Router)
 components/           UI y layout (AppShell, navegación por rol)
 lib/                  types, roles/permisos, health (lógica del semáforo),
                       auth, data (store mock + seed), supabase (clientes)
-supabase/schema.sql   Esquema completo + RLS + semilla
+supabase/migrations/  Esquema + RLS (fuente única); seed.sql semilla local
+supabase/config.toml  Configuración del stack local (Supabase CLI)
+Dockerfile, docker-compose.yml  App en contenedor (dev, opcional)
 ```
 
-## 4. Notas importantes
+## 5. Notas importantes
 - El módulo de salud entrega una **evaluación orientativa**, **no un diagnóstico**. La lógica de
   puntajes (`lib/health.ts`) debe ser **validada por un médico**.
 - El **Aviso de Privacidad** (`app/privacidad`) es un modelo y debe revisarlo un **abogado**

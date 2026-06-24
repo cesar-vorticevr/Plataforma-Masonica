@@ -20,6 +20,10 @@ Puntos rápidos (el detalle está en `AGENTS.md`):
   **supabase-postgres-best-practices** = rendimiento/diseño de SQL, índices, esquema y rendimiento de RLS.
   Es el grueso del cableado de producción. No confíes en el conocimiento previo (verifica contra
   docs/changelog); RLS por logia/grado; nunca `user_metadata` para autorización. Ver `AGENTS.md` §8.3.
+- Desarrollo local: Supabase vía CLI (`npx supabase start`, su propio stack Docker) + app en host o
+  contenedor. Esquema en `supabase/migrations/` (fuente única, sin `schema.sql`); semilla en
+  `supabase/seed.sql`. Skill **docker-expert** para trabajo de Docker. Producción = Vercel (sin Docker).
+  Ver `AGENTS.md` §8.4.
 - Trabajamos con **SDD vía OpenSpec** (`openspec/`, schema `spec-driven`). Ciclo:
   `/opsx:explore` → `/opsx:propose` → `/opsx:apply` → `/opsx:archive`.
 - **No implementar en modo explore.** Crear artefactos OpenSpec está bien; escribir código de
