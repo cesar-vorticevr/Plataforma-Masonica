@@ -1,4 +1,4 @@
-import { EvaluacionSalud, Semaforo } from "./types";
+import { EvaluacionSalud, RespuestasSalud, Semaforo } from "./types";
 
 // ====================================================================
 // Cuestionario de salud (base: Proyecto Salud Integral)
@@ -78,7 +78,7 @@ export interface ResultadoEvaluacion {
   condiciones: string[];
 }
 
-export function evaluar(resp: Record<string, any>): ResultadoEvaluacion {
+export function evaluar(resp: RespuestasSalud): ResultadoEvaluacion {
   let met = 0, onc = 0;
   const etiquetas: string[] = [];
   let alarma = false;

@@ -58,11 +58,16 @@ export interface PerfilProfesional {
   mostrar_en_directorio: boolean;
 }
 
+// Respuestas del cuestionario de salud: por cada pregunta, un valor si/no (boolean o "si"/"no"),
+// numérico (opciones) o de texto.
+export type RespuestaSalud = string | number | boolean;
+export type RespuestasSalud = Record<string, RespuestaSalud>;
+
 export interface EvaluacionSalud {
   id: string;
   usuario_id: string;
   fecha: string;
-  respuestas: Record<string, any>;
+  respuestas: RespuestasSalud;
   puntaje_metabolico: number;
   puntaje_oncologico: number;
   semaforo_metabolico: Semaforo;

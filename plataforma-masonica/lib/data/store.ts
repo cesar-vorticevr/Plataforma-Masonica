@@ -1,8 +1,8 @@
 "use client";
 import { DB, seed } from "./seed";
 import {
-  Asistencia, Correspondencia, DocumentoBuzon, Evento, EvaluacionSalud, Generales,
-  Logia, MensajeProfesional, Pago, PerfilProfesional, Tenida, Trabajo, Usuario, Grado, Rol,
+  Correspondencia, DocumentoBuzon, Evento, EvaluacionSalud, Generales,
+  Logia, PerfilProfesional, Trabajo, Usuario, Grado, Rol,
 } from "../types";
 
 const KEY = "plataforma_masonica_db_v1";

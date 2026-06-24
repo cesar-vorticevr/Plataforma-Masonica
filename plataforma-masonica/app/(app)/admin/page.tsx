@@ -7,15 +7,19 @@ import {
   listLogias, listUsuariosLogia, listUsuarios, getLogia, validarUsuario, actualizarUsuario,
   cambiarPalabraClaveLogia, crearLogia, crearUsuario, getGenerales,
 } from "@/lib/data/store";
-import { Grado, GRADO_LABEL, ROL_LABEL, Usuario } from "@/lib/types";
+import { Grado, GRADO_LABEL, ROL_LABEL, Usuario, Logia } from "@/lib/types";
 import { fecha } from "@/lib/format";
 
 export default function Admin() {
   const { user } = useAuth();
-  const [tick, setTick] = useState(0);
   if (!user) return null;
-  const global = esGlobal(user.rol);
+  return <AdminInner user={user} />;
+}
+
+function AdminInner({ user }: { user: Usuario }) {
+  const [tick, setTick] = useState(0);
   const [logiaSel, setLogiaSel] = useState(user.logia_id);
+  const global = esGlobal(user.rol);
   const logias = listLogias();
   const usuarios = global ? listUsuarios().filter(u => u.logia_id === logiaSel) : listUsuariosLogia(user.logia_id);
   const logia = getLogia(global ? logiaSel : user.logia_id)!;
@@ -114,7 +118,7 @@ function GestionUsuario({ u, onClose }: { u: Usuario; onClose: () => void }) {
   );
 }
 
-function PalabraClave({ logia, onSave }: { logia: any; onSave: () => void }) {
+function PalabraClave({ logia, onSave }: { logia: Logia; onSave: () => void }) {
   const [val, setVal] = useState(logia.palabra_clave);
   return (
     <Card>

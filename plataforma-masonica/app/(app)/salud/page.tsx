@@ -4,13 +4,13 @@ import { useAuth } from "@/lib/auth";
 import { Card, PageTitle, Button, SemaforoBadge, Badge, Empty } from "@/components/ui";
 import { PREGUNTAS, evaluar, SEMAFORO_TEXTO, mejora } from "@/lib/health";
 import { listEvaluaciones, addEvaluacion } from "@/lib/data/store";
-import { EvaluacionSalud, CONDICION_LABEL } from "@/lib/types";
+import { EvaluacionSalud, CONDICION_LABEL, Semaforo, RespuestasSalud, RespuestaSalud } from "@/lib/types";
 import { fecha } from "@/lib/format";
 
 export default function SaludPage() {
   const { user } = useAuth();
   const [tab, setTab] = useState<"panel" | "cuestionario">("panel");
-  const [resp, setResp] = useState<Record<string, any>>({});
+  const [resp, setResp] = useState<RespuestasSalud>({});
   const [tick, setTick] = useState(0);
   if (!user) return null;
 
@@ -18,7 +18,7 @@ export default function SaludPage() {
   const ultima = evals[evals.length - 1];
   const previa = evals[evals.length - 2];
 
-  function set(id: string, v: any) { setResp(s => ({ ...s, [id]: v })); }
+  function set(id: string, v: RespuestaSalud) { setResp(s => ({ ...s, [id]: v })); }
   function guardar() {
     const r = evaluar(resp);
     const ev: EvaluacionSalud = { id: Math.random().toString(36).slice(2), usuario_id: user!.id,
@@ -47,10 +47,10 @@ export default function SaludPage() {
           <div className="space-y-6">
             <div className="grid md:grid-cols-2 gap-4">
               <BloqueCard titulo="Riesgo metabólico" desc="Diabetes · hipertensión · obesidad"
-                semaforo={ultima.semaforo_metabolico} puntaje={ultima.puntaje_metabolico}
+                semaforo={ultima.semaforo_metabolico}
                 delta={mejora(ultima, previa)?.metabolico} />
               <BloqueCard titulo="Riesgo oncológico" desc="Tamizaje de factores de cáncer"
-                semaforo={ultima.semaforo_oncologico} puntaje={ultima.puntaje_oncologico}
+                semaforo={ultima.semaforo_oncologico}
                 delta={mejora(ultima, previa)?.oncologico} />
             </div>
 
@@ -105,8 +105,8 @@ export default function SaludPage() {
   );
 }
 
-function BloqueCard({ titulo, desc, semaforo, puntaje, delta }:
-  { titulo: string; desc: string; semaforo: any; puntaje: number; delta?: number | null }) {
+function BloqueCard({ titulo, desc, semaforo, delta }:
+  { titulo: string; desc: string; semaforo: Semaforo; delta?: number | null }) {
   const t = SEMAFORO_TEXTO[semaforo as keyof typeof SEMAFORO_TEXTO];
   const ring = semaforo === "verde" ? "ring-emerald-200" : semaforo === "amarillo" ? "ring-amber-200" : "ring-rose-200";
   return (
@@ -125,7 +125,7 @@ function BloqueCard({ titulo, desc, semaforo, puntaje, delta }:
   );
 }
 
-function Cuestionario({ resp, set }: { resp: Record<string, any>; set: (id: string, v: any) => void }) {
+function Cuestionario({ resp, set }: { resp: RespuestasSalud; set: (id: string, v: RespuestaSalud) => void }) {
   const bloques: { key: string; titulo: string }[] = [
     { key: "metabolico", titulo: "Bloque metabólico (diabetes, hipertensión, obesidad)" },
     { key: "condiciones", titulo: "Padecimientos / enfermedades diagnosticadas" },
@@ -142,7 +142,7 @@ function Cuestionario({ resp, set }: { resp: Record<string, any>; set: (id: stri
               <div key={p.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-3 last:border-0">
                 <label className="text-sm text-slate-700">{p.texto}</label>
                 {p.tipo === "opciones" ? (
-                  <select className="input sm:w-56" value={resp[p.id] ?? ""} onChange={e => set(p.id, e.target.value)}>
+                  <select className="input sm:w-56" value={(resp[p.id] ?? "") as string | number} onChange={e => set(p.id, e.target.value)}>
                     <option value="">Selecciona…</option>
                     {p.opciones!.map(o => <option key={o.label} value={o.valor}>{o.label}</option>)}
                   </select>

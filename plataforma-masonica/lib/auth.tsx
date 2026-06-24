@@ -29,9 +29,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
+    // Restaura la sesión desde localStorage tras el montaje. Se hace en un efecto (y no con un
+    // inicializador perezoso) para evitar un hydration mismatch: en SSR no existe localStorage,
+    // así que el estado inicial debe coincidir (null) en servidor y cliente, y la restauración
+    // ocurre solo en el cliente. Los setState síncronos de montaje son intencionales aquí.
+    /* eslint-disable react-hooks/set-state-in-effect */
     const id = typeof window !== "undefined" ? localStorage.getItem(SESSION_KEY) : null;
     if (id) { const u = getUsuario(id); if (u) setUserState(u); }
     setLoading(false);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   function persistSession(u: Usuario | null) {

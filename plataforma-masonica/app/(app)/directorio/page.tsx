@@ -71,10 +71,12 @@ export default function Directorio() {
 function EditarPerfil({ userId, onClose }: { userId: string; onClose: () => void }) {
   const [p, setP] = useState<PerfilProfesional>(() =>
     getPerfil(userId) ?? { usuario_id: userId, mostrar_en_directorio: true, palabras_clave: [] });
-  const set = (k: keyof PerfilProfesional, v: any) => setP(s => ({ ...s, [k]: v }));
+  const [kw, setKw] = useState(() => (getPerfil(userId)?.palabras_clave ?? []).join(", "));
+  function set<K extends keyof PerfilProfesional>(k: K, v: PerfilProfesional[K]) {
+    setP(s => ({ ...s, [k]: v }));
+  }
   function guardar() {
-    guardarPerfil({ ...p, palabras_clave: typeof (p as any)._kw === "string"
-      ? (p as any)._kw.split(",").map((x: string) => x.trim()).filter(Boolean) : p.palabras_clave });
+    guardarPerfil({ ...p, palabras_clave: kw.split(",").map(x => x.trim()).filter(Boolean) });
     onClose();
   }
   return (
@@ -85,7 +87,7 @@ function EditarPerfil({ userId, onClose }: { userId: string; onClose: () => void
         <Input label="Sector" value={p.sector ?? ""} onChange={e => set("sector", e.target.value)} />
         <Textarea label="Descripción de servicios" value={p.descripcion ?? ""} onChange={e => set("descripcion", e.target.value)} />
         <Input label="Palabras clave (separadas por coma)" defaultValue={(p.palabras_clave ?? []).join(", ")}
-          onChange={e => set("_kw" as any, e.target.value)} />
+          onChange={e => setKw(e.target.value)} />
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={p.mostrar_en_directorio} onChange={e => set("mostrar_en_directorio", e.target.checked)} />
           Mostrar mi perfil en el directorio

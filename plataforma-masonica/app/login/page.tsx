@@ -16,11 +16,11 @@ export default function LoginPage() {
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setError("");
     try { await login(email, password); router.push("/dashboard"); }
-    catch (err: any) { setError(err.message); }
+    catch (err) { setError(err instanceof Error ? err.message : String(err)); }
   }
   async function google() {
     try { await loginGoogle(); router.push("/dashboard"); }
-    catch (err: any) { setError(err.message); }
+    catch (err) { setError(err instanceof Error ? err.message : String(err)); }
   }
 
   return (

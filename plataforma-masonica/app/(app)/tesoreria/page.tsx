@@ -6,15 +6,18 @@ import {
   listUsuariosLogia, getCapita, setCapita, listPagos, togglePago,
   cumplimientoCapitas, mesAplica, setInicioUsuario,
 } from "@/lib/data/store";
-import { MESES } from "@/lib/types";
+import { MESES, Usuario } from "@/lib/types";
 import { money } from "@/lib/format";
 
 export default function Tesoreria() {
   const { user } = useAuth();
+  if (!user) return null;
+  return <TesoreriaInner user={user} />;
+}
+
+function TesoreriaInner({ user }: { user: Usuario }) {
   const [anio] = useState(new Date().getFullYear());
   const [tick, setTick] = useState(0);
-  if (!user) return null;
-
   const hermanos = listUsuariosLogia(user.logia_id).filter(u => u.rol === "hermano" || u.rol === "tesorero" || u.rol === "secretario");
   const capita = getCapita(user.logia_id)?.monto ?? 0;
   const [montoEdit, setMontoEdit] = useState(String(capita));

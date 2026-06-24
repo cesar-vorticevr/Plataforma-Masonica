@@ -26,7 +26,7 @@ export default function RegisterPage() {
       await registrar({ nombre: f.nombre, email: f.email, password: f.password,
         palabraGeneral: f.palabraGeneral, logiaId: f.logiaId, palabraLogia: f.palabraLogia });
       router.push("/dashboard");
-    } catch (err: any) { setError(err.message); }
+    } catch (err) { setError(err instanceof Error ? err.message : String(err)); }
   }
 
   return (

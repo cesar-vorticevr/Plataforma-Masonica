@@ -56,7 +56,7 @@ function Crear({ userId, logiaId, global, onClose }:
   function guardar() {
     if (!f.titulo || !f.fecha_evento) return;
     addEvento({ titulo: f.titulo, descripcion: f.descripcion, fecha_evento: new Date(f.fecha_evento).toISOString(),
-      alcance: f.alcance as any, logia_id: f.alcance === "global" ? null : logiaId, autor_id: userId });
+      alcance: f.alcance as "logia" | "global", logia_id: f.alcance === "global" ? null : logiaId, autor_id: userId });
     onClose();
   }
   return (

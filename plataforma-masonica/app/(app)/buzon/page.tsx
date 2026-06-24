@@ -54,7 +54,7 @@ function Subir({ userId, onClose }: { userId: string; onClose: () => void }) {
         </div>
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-          <Button onClick={() => { if (f.titulo) { addBuzon({ titulo: f.titulo, tipo: f.tipo as any, archivo_nombre: f.archivo_nombre || "documento", autor_id: userId }); onClose(); } }}>Subir</Button>
+          <Button onClick={() => { if (f.titulo) { addBuzon({ titulo: f.titulo, tipo: f.tipo as "pdf" | "word", archivo_nombre: f.archivo_nombre || "documento", autor_id: userId }); onClose(); } }}>Subir</Button>
         </div>
       </div>
     </Modal>
