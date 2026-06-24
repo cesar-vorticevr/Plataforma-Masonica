@@ -28,4 +28,4 @@
 ## 5. Cierre
 
 - [x] 5.1 Actualizar AGENTS.md (§2), `openspec/config.yaml` y README a Next 16 / React 19. Skills de Next de Vercel: siguen requiriendo 16.3+ (preview/canary); revisitar cuando 16.3 sea estable.
-- [ ] 5.2 Merge a `main` y validar que el siguiente cambio (`dev-docker-local`) parte de esta base. (Pendiente de tu confirmación.)
+- [x] 5.2 Merge a `main` (fast-forward) junto con `lint-cleanup`; `main` en verde (typecheck/lint). `dev-docker-local` parte de esta base.
