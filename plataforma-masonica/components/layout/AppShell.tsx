@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { NAV } from "./nav";
 import { getLogia, listUsuarios } from "@/lib/data/store";
+import { DATA_MODE } from "@/lib/supabase/client";
 import { ROL_LABEL, GRADO_LABEL } from "@/lib/types";
 import { initials } from "@/lib/format";
 
@@ -56,7 +57,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             {logia ? `Resp.·. Log.·. ${logia.nombre} N.°${logia.numero} · Or.·. ${logia.oriente}` : ""}
           </div>
           <div className="flex items-center gap-3 ml-auto">
-            <DemoSwitcher current={user.id} onSwitch={switchDemo} />
+            {DATA_MODE !== "supabase" && <DemoSwitcher current={user.id} onSwitch={switchDemo} />}
             <div className="flex items-center gap-2">
               <div className="w-9 h-9 rounded-full bg-navy text-white grid place-items-center text-sm font-semibold">{initials(user.nombre)}</div>
               <div className="hidden sm:block leading-tight">
