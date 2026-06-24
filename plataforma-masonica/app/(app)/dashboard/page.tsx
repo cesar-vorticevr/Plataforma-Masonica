@@ -1,25 +1,72 @@
 "use client";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { accesoCompleto, esAdminLogia } from "@/lib/roles";
-import { Card, PageTitle, Stat, Badge } from "@/components/ui";
-import { ROL_LABEL, GRADO_LABEL } from "@/lib/types";
-import {
-  getLogia, listEvaluaciones, listUsuariosLogia, listEventos, cumplimientoCapitas, asistenciasUsuario,
-} from "@/lib/data/store";
+import { createClient } from "@/lib/supabase/client";
+import { Card, PageTitle, Stat } from "@/components/ui";
+import { ROL_LABEL, GRADO_LABEL, EvaluacionSalud, Usuario } from "@/lib/types";
+import { listEvaluaciones } from "@/lib/data/salud";
+import { getCapita, listPagos } from "@/lib/data/tesoreria";
+import { listTenidas, listAsistencias } from "@/lib/data/tenidas";
+import { rangoCapitas, cumplimiento } from "@/lib/capitas";
 import { fecha } from "@/lib/format";
+
+interface LogiaInfo { nombre: string; oriente: string }
 
 export default function Dashboard() {
   const { user } = useAuth();
   if (!user) return null;
-  const logia = getLogia(user.logia_id);
-  const evals = listEvaluaciones(user.id);
-  const ultima = evals[evals.length - 1];
-  const eventos = listEventos(user.logia_id).slice(0, 3);
+  return <DashboardInner user={user} />;
+}
+
+function DashboardInner({ user }: { user: Usuario }) {
   const anio = new Date().getFullYear();
-  const cap = cumplimientoCapitas(user, anio);
-  const asis = asistenciasUsuario(user.id, user.logia_id);
   const validado = accesoCompleto(user);
+  const puedeContar = esAdminLogia(user.rol) || user.rol === "tesorero";
+
+  const [logia, setLogia] = useState<LogiaInfo | null>(null);
+  const [ultima, setUltima] = useState<EvaluacionSalud | null>(null);
+  const [cap, setCap] = useState({ pagados: 0, count: 0, pct: 0 });
+  const [asis, setAsis] = useState({ presentes: 0, total: 0, pct: 0 });
+  const [conteo, setConteo] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let activo = true;
+    (async () => {
+      const sb = createClient();
+      const [lg, evals, capita, pagos, tenidas, asistencias, cnt] = await Promise.all([
+        sb.from("logias").select("nombre,oriente").eq("id", user.logia_id).single().then(r => r.data as LogiaInfo | null),
+        listEvaluaciones(user.id),
+        getCapita(user.logia_id),
+        listPagos(anio),
+        listTenidas(user.logia_id),
+        listAsistencias(),
+        puedeContar
+          ? sb.from("perfiles").select("id", { count: "exact", head: true }).eq("logia_id", user.logia_id).then(r => r.count ?? 0)
+          : Promise.resolve(null),
+      ]);
+      if (!activo) return;
+      setLogia(lg);
+      setUltima(evals.length ? evals[evals.length - 1] : null);
+      const c = cumplimiento(rangoCapitas(user.fecha_inicio, user.fecha_registro, anio), pagos);
+      setCap({ pagados: c.pagados, count: c.count, pct: c.pct });
+      const presentes = asistencias.filter(a => a.presente).length;
+      setAsis({ presentes, total: tenidas.length, pct: tenidas.length ? Math.round((presentes / tenidas.length) * 100) : 0 });
+      setConteo(cnt);
+      setLoading(false);
+      void capita; // el monto no se muestra aquí
+    })();
+    return () => { activo = false; };
+  }, [user.id, user.logia_id, user.fecha_inicio, user.fecha_registro, anio, puedeContar]);
+
+  if (loading) return <div className="min-h-[40vh] grid place-items-center text-slate-400">Cargando…</div>;
+
+  const saludValue = ultima
+    ? (ultima.semaforo_metabolico === "rojo" || ultima.semaforo_oncologico === "rojo" ? "Atención"
+      : ultima.semaforo_metabolico === "amarillo" ? "Moderado" : "Bien")
+    : "Sin datos";
 
   return (
     <div>
@@ -43,34 +90,19 @@ export default function Dashboard() {
       )}
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Stat label="Salud" value={ultima ? (ultima.semaforo_metabolico === "rojo" || ultima.semaforo_oncologico === "rojo" ? "Atención" : ultima.semaforo_metabolico === "amarillo" ? "Moderado" : "Bien") : "Sin datos"}
-          sub={ultima ? `Última: ${fecha(ultima.fecha)}` : "Llena tu evaluación"} />
+        <Stat label="Salud" value={saludValue} sub={ultima ? `Última: ${fecha(ultima.fecha)}` : "Llena tu evaluación"} />
         <Stat label="Cápitas pagadas" value={`${cap.pagados}/${cap.count}`} sub={`${cap.pct}% de cumplimiento`} />
         <Stat label="Asistencia" value={`${asis.pct}%`} sub={`${asis.presentes}/${asis.total} tenidas`} />
-        <Stat label="Hermanos en tu logia" value={listUsuariosLogia(user.logia_id).length} sub={logia?.oriente} />
+        {conteo !== null && <Stat label="Hermanos en tu logia" value={conteo} sub={logia?.oriente} />}
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
         <Card>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-navy">Próximos eventos</h3>
-            <Link href="/eventos" className="text-royal text-sm">Ver todos</Link>
+            <Link href="/eventos" className="text-royal text-sm">Ver eventos</Link>
           </div>
-          {eventos.length === 0 ? <p className="text-slate-400 text-sm">Sin eventos.</p> :
-            <ul className="space-y-3">
-              {eventos.map(e => (
-                <li key={e.id} className="flex items-start gap-3">
-                  <div className="text-center bg-slate-100 rounded-lg px-2 py-1 text-xs">
-                    <div className="font-bold text-navy">{new Date(e.fecha_evento).getDate()}</div>
-                    <div className="text-slate-500">{new Date(e.fecha_evento).toLocaleDateString("es-MX",{month:"short"})}</div>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium">{e.titulo}</div>
-                    <Badge color={e.alcance === "global" ? "gold" : "blue"}>{e.alcance === "global" ? "Todas las logias" : "Mi logia"}</Badge>
-                  </div>
-                </li>
-              ))}
-            </ul>}
+          <p className="text-slate-400 text-sm">El módulo de eventos estará disponible próximamente.</p>
         </Card>
 
         <Card>

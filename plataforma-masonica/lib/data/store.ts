@@ -33,8 +33,6 @@ export const getUsuarioPorEmail = (email: string) =>
   db().usuarios.find(u => u.email.toLowerCase() === email.toLowerCase());
 export const getLogia = (id: string) => db().logias.find(l => l.id === id);
 export const listLogias = () => db().logias;
-export const listUsuariosLogia = (logiaId: string) =>
-  db().usuarios.filter(u => u.logia_id === logiaId);
 export const listUsuarios = () => db().usuarios;
 
 export function crearUsuario(data: {
@@ -74,13 +72,9 @@ export function guardarPerfil(p: PerfilProfesional) {
 export const listPerfilesDirectorio = () =>
   db().perfiles.filter(p => p.mostrar_en_directorio);
 
-// ---------- Salud ----------
-// (Escritura/consentimiento migrados a Supabase: ver lib/data/salud.ts.)
-// listEvaluaciones permanece: lo usan el dashboard y las estadísticas mock aún no cableadas.
-export const listEvaluaciones = (uid: string) =>
-  db().evaluaciones.filter(e => e.usuario_id === uid).sort((a,b) => a.fecha.localeCompare(b.fecha));
+// ---------- Salud migrada a lib/data/salud.ts; estadísticas a función security definer. ----------
 
-// ---------- Eventos ----------
+// ---------- Eventos (módulo aún en mock; se cablea en Fase 3) ----------
 export function listEventos(logiaId: string): Evento[] {
   return db().eventos
     .filter(e => e.alcance === "global" || e.logia_id === logiaId)
@@ -162,98 +156,6 @@ export function setAsistencia(tenidaId: string, usuarioId: string, presente: boo
   else a.presente = presente;
   persist();
 }
-export function asistenciasUsuario(usuarioId: string, logiaId: string) {
-  const tenidas = listTenidas(logiaId);
-  const total = tenidas.length;
-  let presentes = 0;
-  for (const t of tenidas) {
-    const a = db().asistencias.find(x => x.tenida_id===t.id && x.usuario_id===usuarioId);
-    if (a?.presente) presentes++;
-  }
-  return { total, presentes, pct: total ? Math.round((presentes/total)*100) : 0 };
-}
-
-// ---------- Estadísticas agregadas (anonimizadas) ----------
-export interface StatsLogia {
-  logiaId: string;
-  nombre: string;
-  oriente: string;
-  totalMiembros: number;
-  validados: number;
-  pendientes: number;
-  capitasPct: number;        // % cumplimiento cápitas (año actual)
-  asistenciaPct: number;     // % asistencia promedio
-  evaluados: number;         // hermanos con al menos una evaluación de salud
-  saludMetab: { verde: number; amarillo: number; rojo: number };
-  saludOnc: { verde: number; amarillo: number; rojo: number };
-  etiquetas: Record<string, number>;
-  condiciones: Record<string, number>;
-}
-
-export function statsLogia(logiaId: string): StatsLogia {
-  const l = getLogia(logiaId)!;
-  const miembros = listUsuariosLogia(logiaId).filter(u => u.rol !== "master" && u.rol !== "gran_secretario");
-  const anio = new Date().getFullYear();
-
-  let capSum = 0, capN = 0, asisSum = 0, asisN = 0;
-  const saludMetab = { verde: 0, amarillo: 0, rojo: 0 };
-  const saludOnc = { verde: 0, amarillo: 0, rojo: 0 };
-  const etiquetas: Record<string, number> = {};
-  const condiciones: Record<string, number> = {};
-  let evaluados = 0;
-
-  for (const m of miembros) {
-    const c = cumplimientoCapitas(m, anio);
-    if (c.count > 0) { capSum += c.pct; capN++; }
-    const a = asistenciasUsuario(m.id, logiaId);
-    if (a.total) { asisSum += a.pct; asisN++; }
-    const evals = listEvaluaciones(m.id);
-    if (evals.length) {
-      evaluados++;
-      const u = evals[evals.length - 1];
-      saludMetab[u.semaforo_metabolico]++;
-      saludOnc[u.semaforo_oncologico]++;
-      for (const t of u.etiquetas) etiquetas[t] = (etiquetas[t] ?? 0) + 1;
-      for (const cd of (u.condiciones ?? [])) condiciones[cd] = (condiciones[cd] ?? 0) + 1;
-    }
-  }
-
-  return {
-    logiaId, nombre: l.nombre, oriente: l.oriente,
-    totalMiembros: miembros.length,
-    validados: miembros.filter(u => u.estado === "validado").length,
-    pendientes: miembros.filter(u => u.estado === "pendiente").length,
-    capitasPct: capN ? Math.round(capSum / capN) : 0,
-    asistenciaPct: asisN ? Math.round(asisSum / asisN) : 0,
-    evaluados, saludMetab, saludOnc, etiquetas, condiciones,
-  };
-}
-
-export function statsTodas(): StatsLogia[] {
-  return listLogias().map(l => statsLogia(l.id));
-}
-
-export function consolidar(stats: StatsLogia[]) {
-  const total = stats.reduce((a, s) => a + s.totalMiembros, 0);
-  const validados = stats.reduce((a, s) => a + s.validados, 0);
-  const evaluados = stats.reduce((a, s) => a + s.evaluados, 0);
-  const capitasPct = stats.length ? Math.round(stats.reduce((a, s) => a + s.capitasPct, 0) / stats.length) : 0;
-  const asistenciaPct = stats.length ? Math.round(stats.reduce((a, s) => a + s.asistenciaPct, 0) / stats.length) : 0;
-  const etiquetas: Record<string, number> = {};
-  const condiciones: Record<string, number> = {};
-  const saludMetab = { verde: 0, amarillo: 0, rojo: 0 };
-  const saludOnc = { verde: 0, amarillo: 0, rojo: 0 };
-  for (const st of stats) {
-    for (const [k, v] of Object.entries(st.etiquetas)) etiquetas[k] = (etiquetas[k] ?? 0) + v;
-    for (const [k, v] of Object.entries(st.condiciones)) condiciones[k] = (condiciones[k] ?? 0) + v;
-    (["verde","amarillo","rojo"] as const).forEach(k => { saludMetab[k] += st.saludMetab[k]; saludOnc[k] += st.saludOnc[k]; });
-  }
-  return { total, validados, evaluados, capitasPct, asistenciaPct, etiquetas, condiciones, saludMetab, saludOnc };
-}
-
-export function topEtiquetas(etiquetas: Record<string, number>, n = 6) {
-  return Object.entries(etiquetas).sort((a, b) => b[1] - a[1]).slice(0, n);
-}
 
 // ---------- Cápitas: rango por mes actual y fecha de inicio ----------
 export function rangoCapitas(usuario: Usuario, anio: number) {
@@ -264,14 +166,6 @@ export function rangoCapitas(usuario: Usuario, anio: number) {
   const iniMes = inicio.getFullYear() === anio ? inicio.getMonth() + 1 : 1;
   if (iniMes > finMes) return { iniMes, finMes, count: 0 };
   return { iniMes, finMes, count: finMes - iniMes + 1 };
-}
-
-export function cumplimientoCapitas(usuario: Usuario, anio: number) {
-  const r = rangoCapitas(usuario, anio);
-  if (r.count === 0) return { ...r, pagados: 0, pendientes: 0, pct: 0 };
-  const pagados = listPagos(usuario.id, anio)
-    .filter(p => p.pagado && p.mes >= r.iniMes && p.mes <= r.finMes).length;
-  return { ...r, pagados, pendientes: r.count - pagados, pct: Math.round((pagados / r.count) * 100) };
 }
 
 export function mesAplica(usuario: Usuario, anio: number, mes: number) {
