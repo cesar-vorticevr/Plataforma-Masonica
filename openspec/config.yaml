@@ -1,0 +1,83 @@
+schema: spec-driven
+
+# Project context shown to AI when creating OpenSpec artifacts.
+context: |
+  Plataforma Masónica · Gran Logia de Estado "Restauración".
+  Plataforma web multi-logia para administrar el padrón de hermanos, su salud preventiva
+  (tamizaje ORIENTATIVO, no diagnóstico), su situación administrativa (cápitas y asistencias)
+  y la comunicación institucional. Escala estatal: 30+ logias, miles de hermanos.
+
+  Documentación de referencia (leer antes de proponer):
+  - AGENTS.md (raíz): arquitectura, dominio, roles/permisos, seguridad, convenciones, flujo SDD.
+  - PRODUCT.md (raíz): estrategia de producto (registro, usuarios, propósito, marca, principios).
+  - DESIGN.md (raíz): sistema de diseño (formato Google design.md). Todo cambio de UI debe cumplirlo.
+  - Plataforma_Masonica_Especificacion.docx (raíz): requisitos funcionales completos, v1.0.
+
+  Stack: Next.js 16 (App Router, Turbopack) + React 19 + TypeScript strict + Tailwind 3, backend Supabase
+  (Postgres + Auth email/Google + Storage + RLS). La app vive en plataforma-masonica/.
+
+  Estado: demo navegable completa en modo `mock` (localStorage). Existe esquema RLS de producción
+  (supabase/schema.sql). Falta CABLEAR producción: auth real, consultas Supabase, Storage de
+  archivos y vistas de salud agregada. Cada punto está marcado en el código.
+
+  Dominio (en español): Hermano, Logia, Grado/Cámara (aprendiz<compañero<maestro),
+  Trabajo/Burilado/Trazado, Tenida, Cápita, Validación. Estados: pendiente/validado/bloqueado.
+  Cadena de mando: Master → Gran Secretario → Secretario (1 por logia) + Tesorero → Hermanos.
+
+  Restricciones NO negociables (LFPDPPP 2025):
+  - RBAC en el SERVIDOR (RLS), aislamiento por logia y por grado. La UI (lib/roles.ts) no basta.
+  - Salud individual = solo el propio hermano; administradores solo ven AGREGADO/anonimizado.
+  - Consentimiento expreso (con fecha y versión) ANTES del módulo de Salud.
+  - Palabras clave (general y de logia) y contraseñas guardadas con hash, nunca en texto plano.
+  - Visibilidad de trabajos por cámara validada en el servidor (ves tu cámara + inferiores).
+  - Bitácora de auditoría de acciones administrativas y accesos a datos sensibles.
+  - El módulo de Salud siempre muestra "no sustituye una consulta médica".
+
+  Convenciones: dominio nombrado en español; mantener sincronizados lib/types.ts (TS) y
+  supabase/schema.sql (Postgres); todo acceso a datos pasa por lib/data/store.ts (conservar firmas
+  al migrar a Supabase); permisos vía lib/roles.ts y nav.ts; Tailwind con tokens navy/royal/gold/ink;
+  formato y fechas MX. `npm run typecheck` y `npm run lint` deben pasar.
+
+  Diseño: la UI debe cumplir DESIGN.md (tokens y reglas). Reutilizar los primitivos de
+  components/ui; no introducir colores/fuentes/tamaños/radios fuera de los definidos; semáforo con
+  redundancia (color+texto+ícono); estética institucional sobria (sin glassmorphism/glows). Si el
+  sistema de diseño debe evolucionar, actualizar DESIGN.md y el tema (tailwind.config.ts/globals.css)
+  en el mismo cambio.
+
+  Skills de diseño (locales en .agents/skills/, versionadas; usar siempre en trabajo de UI):
+  producto/dashboard → impeccable (+ ui-ux-pro-max); público/landing → design-taste-frontend
+  (+ ui-ux-pro-max). Las skills asesoran y elevan la calidad, pero DESIGN.md y el modelo de permisos
+  mandan sobre ellas. Ver AGENTS.md §8.2.
+
+  Skills de Supabase/Postgres (locales, versionadas; usar siempre en trabajo de datos/backend — el grueso
+  del cableado de producción): supabase = integración (Auth/@supabase/ssr, DB, RLS segura, Storage,
+  migraciones); supabase-postgres-best-practices = rendimiento/diseño de SQL, índices, esquema y
+  rendimiento de RLS (optimizar las funciones por fila mi_logia()/mi_rol() a escala). Verificar contra
+  docs/changelog (no confiar en conocimiento previo), RLS por logia/grado, nunca user_metadata para
+  autorización. Ver AGENTS.md §8.3.
+
+  Roadmap por fases: 0 Definiciones · 1 (MVP) Censo+identidad · 2 Administración (tesorería,
+  tenidas, cumplimientos) · 3 Comunicación · 4 Red profesional · 5 Mejoras. Alinea cada cambio
+  con una fase; el trabajo real es cablear producción empezando por la Fase 1.
+
+# Per-artifact rules.
+rules:
+  proposal:
+    - Indica a qué fase del roadmap pertenece el cambio y qué "decisión abierta" (§11 del .docx) requiere antes de empezar, si aplica.
+    - Incluye una sección "Non-goals" (lo que el cambio NO hace).
+    - Si el cambio toca datos sensibles (salud) o permisos, dilo explícitamente en el resumen.
+    - Si el cambio afecta la UI, indica si cumple DESIGN.md tal cual o si requiere evolucionar el sistema de diseño.
+  design:
+    - Documenta cómo se aplica la seguridad en el SERVIDOR (RLS/políticas), no solo en la UI.
+    - Si cambia el modelo de datos, muestra el delta tanto en lib/types.ts (TS) como en supabase/schema.sql (Postgres).
+    - "Anota el impacto en privacidad: ¿quién ve qué? Reafirma agregado/anonimizado para salud."
+    - Para cambios de UI, lista los tokens/primitivos de DESIGN.md que se usan. Si se necesitan tokens nuevos, propón el delta de DESIGN.md + tailwind.config.ts/globals.css.
+  tasks:
+    - Divide en tareas verificables; incluye una tarea de `npm run typecheck`/`lint` al cierre.
+    - Separa tareas de UI (mock) de tareas de cableado de producción (Supabase) cuando aplique.
+    - Para cambios de UI, incluye una tarea de verificación de cumplimiento de DESIGN.md (tokens, primitivos, Do's & Don'ts).
+    - Para cambios de UI, apóyate en las skills de diseño (impeccable / ui-ux-pro-max para producto; design-taste-frontend para landing). Ver AGENTS.md §8.2.
+    - Para trabajo de Supabase (DB/RLS/Auth/Storage/migraciones), usa las skills supabase y supabase-postgres-best-practices; incluye una tarea de verificación con query de prueba, revisión de RLS por logia/grado y revisión de rendimiento (índices, funciones por fila) cuando aplique. Ver AGENTS.md §8.3.
+  specs:
+    - Escribe requisitos en español, con escenarios (WHEN/THEN o GIVEN/WHEN/THEN) verificables.
+    - Refleja las reglas de visibilidad por rol/logia/grado en escenarios concretos.
