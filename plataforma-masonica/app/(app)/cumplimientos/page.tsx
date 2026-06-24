@@ -1,20 +1,47 @@
 "use client";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { Card, PageTitle, Stat, Badge } from "@/components/ui";
-import { getCapita, asistenciasUsuario, listTenidas, listAsistencias, listPagos, cumplimientoCapitas, mesAplica } from "@/lib/data/store";
-import { MESES } from "@/lib/types";
+import { getCapita, listPagos, PagoRow } from "@/lib/data/tesoreria";
+import { listTenidas, listAsistencias, AsistenciaRow } from "@/lib/data/tenidas";
+import { rangoCapitas, mesAplica, cumplimiento } from "@/lib/capitas";
+import { MESES, Tenida, Usuario } from "@/lib/types";
 import { money, fecha } from "@/lib/format";
 
 export default function Cumplimientos() {
   const { user } = useAuth();
   if (!user) return null;
+  return <CumplimientosInner user={user} />;
+}
+
+function CumplimientosInner({ user }: { user: Usuario }) {
   const anio = new Date().getFullYear();
-  const capita = getCapita(user.logia_id)?.monto ?? 0;
-  const c = cumplimientoCapitas(user, anio);
-  const pagos = listPagos(user.id, anio);
+  const [capita, setCapita] = useState(0);
+  const [pagos, setPagos] = useState<PagoRow[]>([]);
+  const [tenidas, setTenidas] = useState<Tenida[]>([]);
+  const [asistencias, setAsistencias] = useState<AsistenciaRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let activo = true;
+    (async () => {
+      const [cap, pg, ts, as] = await Promise.all([
+        getCapita(user.logia_id), listPagos(anio), listTenidas(user.logia_id), listAsistencias(),
+      ]);
+      if (!activo) return;
+      setCapita(cap); setPagos(pg); setTenidas(ts); setAsistencias(as); setLoading(false);
+    })();
+    return () => { activo = false; };
+  }, [user.logia_id, anio]);
+
+  if (loading) return <div className="min-h-[40vh] grid place-items-center text-slate-400">Cargando…</div>;
+
+  const rango = rangoCapitas(user.fecha_inicio, user.fecha_registro, anio);
+  const c = cumplimiento(rango, pagos);
   const debe = c.pendientes * capita;
-  const asis = asistenciasUsuario(user.id, user.logia_id);
-  const tenidas = listTenidas(user.logia_id);
+  const presentes = asistencias.filter(a => a.presente).length;
+  const totalTenidas = tenidas.length;
+  const asisPct = totalTenidas ? Math.round((presentes / totalTenidas) * 100) : 0;
 
   return (
     <div>
@@ -22,7 +49,7 @@ export default function Cumplimientos() {
       <div className="grid sm:grid-cols-3 gap-4 mb-6">
         <Stat label="Cápitas pagadas" value={`${c.pagados}/${c.count}`} sub={`${c.pct}% de lo que va del año`} />
         <Stat label="Adeudo estimado" value={money(debe)} sub={`${c.pendientes} mes(es) · cápita ${money(capita)}`} />
-        <Stat label="Asistencia" value={`${asis.pct}%`} sub={`${asis.presentes}/${asis.total} tenidas`} />
+        <Stat label="Asistencia" value={`${asisPct}%`} sub={`${presentes}/${totalTenidas} tenidas`} />
       </div>
 
       <Card className="mb-6">
@@ -30,7 +57,7 @@ export default function Cumplimientos() {
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
           {MESES.map((m, i) => {
             const mes = i + 1;
-            if (!mesAplica(user, anio, mes)) {
+            if (!mesAplica(rango, mes)) {
               return <div key={m} className="rounded-lg p-2 text-center text-sm bg-slate-50 text-slate-300">
                 <div className="font-medium">{m}</div><div className="text-xs">—</div></div>;
             }
@@ -52,16 +79,17 @@ export default function Cumplimientos() {
           <thead><tr className="text-left text-slate-500 border-b"><th className="py-2">Tenida</th><th>Fecha</th><th>Asistencia</th></tr></thead>
           <tbody>
             {tenidas.map(t => {
-              const a = listAsistencias(t.id).find(x => x.usuario_id === user.id);
+              const presente = asistencias.find(a => a.tenida_id === t.id)?.presente ?? false;
               return (
                 <tr key={t.id} className="border-b last:border-0">
                   <td className="py-2">{t.titulo}</td><td>{fecha(t.fecha)}</td>
-                  <td>{a?.presente ? <Badge color="green">Presente</Badge> : <Badge color="red">Ausente</Badge>}</td>
+                  <td>{presente ? <Badge color="green">Presente</Badge> : <Badge color="red">Ausente</Badge>}</td>
                 </tr>
               );
             })}
           </tbody>
         </table>
+        {tenidas.length === 0 && <div className="text-center text-slate-400 py-6 text-sm">Aún no hay tenidas registradas.</div>}
       </Card>
     </div>
   );

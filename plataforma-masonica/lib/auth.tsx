@@ -20,13 +20,14 @@ const Ctx = createContext<AuthCtx | null>(null);
 
 interface PerfilRow {
   id: string; nombre: string; email: string; rol: Rol; grado: Grado;
-  logia_id: string | null; estado: EstadoUsuario; foto: string | null; fecha_registro: string;
+  logia_id: string | null; estado: EstadoUsuario; foto: string | null;
+  fecha_registro: string; fecha_inicio: string | null;
 }
 function perfilAUsuario(p: PerfilRow): Usuario {
   return {
     id: p.id, nombre: p.nombre, email: p.email, rol: p.rol, grado: p.grado,
     logia_id: p.logia_id ?? "", estado: p.estado, foto: p.foto ?? undefined,
-    fecha_registro: p.fecha_registro,
+    fecha_registro: p.fecha_registro, fecha_inicio: p.fecha_inicio ?? undefined,
   };
 }
 
