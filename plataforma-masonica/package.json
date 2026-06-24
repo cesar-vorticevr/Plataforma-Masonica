@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "crear:master": "node --env-file=.env.local scripts/crear-master.mjs"
+    "crear:master": "node --env-file=.env.local scripts/crear-master.mjs .env.local"
   },
   "engines": {
     "node": ">=20.9.0"

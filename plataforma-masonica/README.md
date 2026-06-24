@@ -15,7 +15,7 @@ npm install
 cp .env.local.example .env.local
 npx supabase start          # Supabase local (Docker) + migraciones + seed
 npx supabase status         # copia API URL y keys (anon + service role) a .env.local
-npm run crear:master        # crea el administrador maestro (imprime su contraseña UNA vez)
+npm run crear:master        # crea el administrador maestro (genera su contraseña y la guarda en .env.local)
 npm run dev                 # http://localhost:3000  → inicia sesión con el maestro
 ```
 

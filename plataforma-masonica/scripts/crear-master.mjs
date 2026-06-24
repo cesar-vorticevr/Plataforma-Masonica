@@ -1,6 +1,8 @@
 // Crea (o promueve) al administrador maestro de la plataforma.
-// Uso local:  npm run crear:master           (carga .env.local)
-// Uso prod:   node --env-file=.env.prod scripts/crear-master.mjs
+// Uso local:  npm run crear:master                                    (carga y escribe .env.local)
+// Uso prod:   node --env-file=.env.prod scripts/crear-master.mjs .env.prod
+//
+// El 1er argumento es el archivo de entorno donde guardar la contraseña generada (default .env.local).
 //
 // Variables de entorno:
 //   NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY   (requeridas)
@@ -8,16 +10,32 @@
 //   MASTER_NOMBRE    (opcional; default "Administrador Master")
 //   MASTER_PASSWORD  (opcional; si no se da, se genera una segura con crypto)
 //
-// La contraseña se entrega a Supabase Auth, que la almacena con hash bcrypt.
-// NO se pre-hashea ni se guarda en el repo.
+// La contraseña se entrega a Supabase Auth, que la almacena con hash bcrypt (NO se pre-hashea).
+// Si se genera, además se persiste como MASTER_PASSWORD en el archivo de entorno (gitignored).
 import { createClient } from "@supabase/supabase-js";
 import { randomBytes } from "node:crypto";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const email = (process.env.MASTER_EMAIL || "master@restauracion.org.mx").toLowerCase();
 const nombre = process.env.MASTER_NOMBRE || "Administrador Master";
 let password = process.env.MASTER_PASSWORD || null;
+// Archivo de entorno donde persistir la contraseña generada (gitignored). Default .env.local.
+const envFile = process.argv[2] || ".env.local";
+
+// Inserta o reemplaza MASTER_PASSWORD en el archivo de entorno indicado.
+function guardarPasswordEnEnv(file, value) {
+  let contenido = existsSync(file) ? readFileSync(file, "utf8") : "";
+  const linea = `MASTER_PASSWORD=${value}`;
+  if (/^MASTER_PASSWORD=.*$/m.test(contenido)) {
+    contenido = contenido.replace(/^MASTER_PASSWORD=.*$/m, linea);
+  } else {
+    if (contenido && !contenido.endsWith("\n")) contenido += "\n";
+    contenido += linea + "\n";
+  }
+  writeFileSync(file, contenido);
+}
 
 if (!url || !serviceKey) {
   console.error("✗ Falta NEXT_PUBLIC_SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en el entorno.");
@@ -70,7 +88,11 @@ async function main() {
   console.log("\n✓ Administrador maestro listo.");
   console.log("  email:      ", email);
   if (password) {
-    console.log("  contraseña: ", password, generada ? "(generada — guárdala, no se vuelve a mostrar)" : "");
+    console.log("  contraseña: ", password);
+    if (generada) {
+      guardarPasswordEnEnv(envFile, password);
+      console.log(`  guardada en ${envFile} como MASTER_PASSWORD (gitignored).`);
+    }
   }
   console.log("");
 }
