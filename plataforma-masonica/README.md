@@ -1,6 +1,6 @@
 # Plataforma Masónica · Gran Logia de Estado "Restauración"
 
-Aplicación web **Next.js 14 + TypeScript + Tailwind**, lista para conectar a **Supabase**
+Aplicación web **Next.js 16 + React 19 + TypeScript + Tailwind**, lista para conectar a **Supabase**
 (autenticación, base de datos PostgreSQL y almacenamiento).
 
 Funciona en **dos modos**, controlados por la variable `NEXT_PUBLIC_DATA_MODE`:
