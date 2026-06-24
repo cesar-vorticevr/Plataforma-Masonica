@@ -1,19 +1,33 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { Card, PageTitle, Button, Input } from "@/components/ui";
-import { getGenerales, guardarGenerales } from "@/lib/data/store";
+import { getGenerales, guardarGenerales } from "@/lib/data/generales";
 import { Generales } from "@/lib/types";
 
 export default function GeneralesPage() {
   const { user } = useAuth();
-  const [saved, setSaved] = useState(false);
-  const [g, setG] = useState<Generales>(() =>
-    getGenerales(user!.id) ?? { usuario_id: user!.id });
   if (!user) return null;
+  return <GeneralesForm userId={user.id} />;
+}
+
+function GeneralesForm({ userId }: { userId: string }) {
+  const [g, setG] = useState<Generales>({ usuario_id: userId });
+  const [saved, setSaved] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+
+  useEffect(() => {
+    getGenerales(userId).then((d) => { if (d) setG(d); });
+  }, [userId]);
+
   const set = (k: keyof Generales, v: string) => { setG(s => ({ ...s, [k]: v })); setSaved(false); };
 
-  function guardar(e: React.FormEvent) { e.preventDefault(); guardarGenerales(g); setSaved(true); }
+  async function guardar(e: React.FormEvent) {
+    e.preventDefault();
+    setGuardando(true);
+    try { await guardarGenerales({ ...g, usuario_id: userId }); setSaved(true); }
+    finally { setGuardando(false); }
+  }
 
   return (
     <div>
@@ -29,7 +43,7 @@ export default function GeneralesPage() {
           <Input label="Notas / otros datos útiles" value={g.notas ?? ""} onChange={e => set("notas", e.target.value)} />
           <div className="sm:col-span-2 flex items-center justify-end gap-3 pt-2 border-t">
             {saved && <span className="text-emerald-600 text-sm">✓ Guardado</span>}
-            <Button type="submit">Guardar generales</Button>
+            <Button type="submit" disabled={guardando}>Guardar generales</Button>
           </div>
         </form>
       </Card>

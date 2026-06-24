@@ -1,7 +1,7 @@
 "use client";
 import { DB, seed } from "./seed";
 import {
-  Correspondencia, DocumentoBuzon, Evento, EvaluacionSalud, Generales,
+  Correspondencia, DocumentoBuzon, Evento, EvaluacionSalud,
   Logia, PerfilProfesional, Trabajo, Usuario, Grado, Rol,
 } from "../types";
 
@@ -63,13 +63,8 @@ export function crearLogia(data: { nombre: string; numero: number; oriente: stri
   db().logias.push(l); persist(); return l;
 }
 
-// ---------- Generales / Perfil ----------
-export const getGenerales = (uid: string) => db().generales.find(g => g.usuario_id === uid);
-export function guardarGenerales(g: Generales) {
-  const i = db().generales.findIndex(x => x.usuario_id === g.usuario_id);
-  if (i >= 0) db().generales[i] = g; else db().generales.push(g);
-  persist();
-}
+// ---------- Perfil ----------
+// (Generales migrado a Supabase: ver lib/data/generales.ts)
 export const getPerfil = (uid: string) => db().perfiles.find(p => p.usuario_id === uid);
 export function guardarPerfil(p: PerfilProfesional) {
   const i = db().perfiles.findIndex(x => x.usuario_id === p.usuario_id);

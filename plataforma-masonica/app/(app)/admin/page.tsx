@@ -7,7 +7,8 @@ import {
   adminListLogias, adminGetLogia, adminListUsuarios, adminValidar, adminSetEstado,
   adminSetRol, adminCambiarPalabra,
 } from "@/lib/data/identidad";
-import { Grado, GRADO_LABEL, ROL_LABEL, Usuario, Logia } from "@/lib/types";
+import { getGenerales } from "@/lib/data/generales";
+import { Grado, GRADO_LABEL, ROL_LABEL, Usuario, Logia, Generales } from "@/lib/types";
 import { fecha } from "@/lib/format";
 
 export default function Admin() {
@@ -97,6 +98,9 @@ function UsuarioRow({ u, onChange }: { u: Usuario; onChange: () => void }) {
 function GestionUsuario({ u, onClose }: { u: Usuario; onClose: () => void }) {
   const [grado, setGrado] = useState<Grado>(u.grado ?? "aprendiz");
   const [guardando, setGuardando] = useState(false);
+  const [generales, setGenerales] = useState<Generales | null>(null);
+
+  useEffect(() => { getGenerales(u.id).then(setGenerales); }, [u.id]);
 
   async function accion(fn: () => Promise<void>) {
     setGuardando(true);
@@ -108,7 +112,13 @@ function GestionUsuario({ u, onClose }: { u: Usuario; onClose: () => void }) {
       <div className="space-y-4">
         <div className="rounded-lg bg-slate-50 p-3 text-sm">
           <div className="font-medium text-slate-700 mb-1">Generales (solo administradores)</div>
-          <div className="text-slate-400 text-xs">Módulo de Generales en preparación (próximo corte).</div>
+          {generales ? (
+            <div className="text-slate-600 text-xs space-y-0.5">
+              <div>Nacimiento: {fecha(generales.fecha_nacimiento)} · Tel: {generales.telefono ?? "—"}</div>
+              <div>Emergencia: {generales.contacto_emergencia_nombre ?? "—"} ({generales.contacto_emergencia_tel ?? "—"})</div>
+              <div>Dirección: {generales.direccion ?? "—"} · Sangre: {generales.tipo_sangre ?? "—"}</div>
+            </div>
+          ) : <div className="text-slate-400 text-xs">El hermano aún no llena sus generales.</div>}
         </div>
 
         <div>
