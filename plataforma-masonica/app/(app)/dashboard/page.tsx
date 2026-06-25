@@ -48,7 +48,7 @@ function DashboardInner({ user }: { user: Usuario }) {
         puedeContar
           ? sb.from("perfiles").select("id", { count: "exact", head: true }).eq("logia_id", user.logia_id).then(r => r.count ?? 0)
           : Promise.resolve(null),
-        listEventos(),
+        listEventos(sb),
       ]);
       if (!activo) return;
       setEventos(evs.slice(0, 3));
