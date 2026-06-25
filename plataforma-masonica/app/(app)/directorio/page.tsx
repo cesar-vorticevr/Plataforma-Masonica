@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { Card, PageTitle, Button, Input, Textarea, Badge, Empty, Modal } from "@/components/ui";
 import { listDirectorio, miPerfil, guardarPerfil, listLogias } from "@/lib/data/directorio";
-import { enviarMensaje } from "@/lib/data/store";
+import { enviar } from "@/lib/data/mensajes";
 import { PerfilProfesional, Logia, Usuario } from "@/lib/types";
 import { initials } from "@/lib/format";
 
@@ -80,7 +80,7 @@ function DirectorioInner({ user }: { user: Usuario }) {
       )}
 
       {editOpen && <EditarPerfil user={user} onClose={() => { setEditOpen(false); setReload(x => x + 1); }} />}
-      {contact && <Contactar de={user.id} para={contact} onClose={() => setContact(null)}
+      {contact && <Contactar user={user} para={contact} onClose={() => setContact(null)}
         onSent={() => { setContact(null); router.push("/mensajes"); }} />}
     </div>
   );
@@ -136,16 +136,24 @@ function EditarPerfil({ user, onClose }: { user: Usuario; onClose: () => void })
   );
 }
 
-function Contactar({ de, para, onClose, onSent }:
-  { de: string; para: { id: string; nombre: string }; onClose: () => void; onSent: () => void }) {
+function Contactar({ user, para, onClose, onSent }:
+  { user: Usuario; para: { id: string; nombre: string }; onClose: () => void; onSent: () => void }) {
   const [txt, setTxt] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  async function mandar() {
+    if (!txt.trim()) return;
+    setEnviando(true);
+    await enviar(user.id, user.nombre, para.id, para.nombre, txt.trim());
+    setEnviando(false);
+    onSent();
+  }
   return (
     <Modal open onClose={onClose} title={`Contactar a ${para.nombre.split("(")[0].trim()}`}>
       <p className="text-xs text-slate-500 mb-3">El contacto es por la plataforma. No se comparten datos personales.</p>
       <Textarea label="Mensaje" value={txt} onChange={e => setTxt(e.target.value)} placeholder="Hermano, me interesa tu servicio profesional…" />
       <div className="flex justify-end gap-2 pt-3">
         <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-        <Button onClick={() => { if (txt.trim()) { enviarMensaje(de, para.id, txt.trim()); onSent(); } }}>Enviar</Button>
+        <Button onClick={mandar} disabled={enviando}>{enviando ? "Enviando…" : "Enviar"}</Button>
       </div>
     </Modal>
   );

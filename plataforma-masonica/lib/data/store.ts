@@ -77,21 +77,7 @@ export function addEvento(e: Omit<Evento,"id"|"creado">) {
 
 // (Buzón → lib/data/buzon.ts · Correspondencia → lib/data/correspondencia.ts, ambos en Supabase + Storage)
 
-// ---------- Mensajería profesional ----------
-export function listMensajes(uid: string) {
-  return db().mensajes
-    .filter(m => m.de_usuario_id === uid || m.a_usuario_id === uid)
-    .sort((a,b)=>b.fecha.localeCompare(a.fecha));
-}
-export function conversacion(a: string, b: string) {
-  return db().mensajes
-    .filter(m => (m.de_usuario_id===a && m.a_usuario_id===b) || (m.de_usuario_id===b && m.a_usuario_id===a))
-    .sort((x,y)=>x.fecha.localeCompare(y.fecha));
-}
-export function enviarMensaje(de: string, a: string, cuerpo: string) {
-  db().mensajes.push({ id: uid(), de_usuario_id: de, a_usuario_id: a, cuerpo, fecha: new Date().toISOString(), leido: false });
-  persist();
-}
+// (Mensajería migrada a Supabase: ver lib/data/mensajes.ts)
 
 // (Trabajos migrado a Supabase + Storage: ver lib/data/trabajos.ts)
 
@@ -172,16 +158,3 @@ export function nuevosEventos(u: Usuario): number {
   return listEventos(u.logia_id).filter(e => new Date(e.creado).getTime() > last).length;
 }
 export function marcarEventosVistos(userId: string) { marcarVisto(userId, "eventos"); }
-
-export function unreadMensajes(userId: string): number {
-  return db().mensajes.filter(m => m.a_usuario_id === userId && !m.leido).length;
-}
-export function marcarMensajesLeidos(userId: string, deUsuarioId?: string) {
-  let cambios = false;
-  for (const m of db().mensajes) {
-    if (m.a_usuario_id === userId && !m.leido && (!deUsuarioId || m.de_usuario_id === deUsuarioId)) {
-      m.leido = true; cambios = true;
-    }
-  }
-  if (cambios) persist();
-}

@@ -14,7 +14,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const path = usePathname();
   const [open, setOpen] = useState(false);
-  const [, setNotif] = useState(0);
+  const [notif, setNotif] = useState(0);
+  const [badges, setBadges] = useState<Record<string, number>>({});
   const [logia, setLogia] = useState<LogiaInfo | null>(null);
 
   useEffect(() => {
@@ -22,6 +23,16 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     window.addEventListener("notif", h);
     return () => window.removeEventListener("notif", h);
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    let on = true;
+    Promise.all(
+      NAV.filter(i => i.badge && i.show(user))
+        .map(async i => [i.href, await i.badge!(user)] as const)
+    ).then(entries => { if (on) setBadges(Object.fromEntries(entries)); });
+    return () => { on = false; };
+  }, [user, notif]);
 
   useEffect(() => {
     if (!user?.logia_id) return;
@@ -48,7 +59,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <Link key={i.href} href={i.href} onClick={() => setOpen(false)}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${active ? "bg-white/15 font-semibold" : "text-white/80 hover:bg-white/10"}`}>
                 <span>{i.icon}</span><span className="flex-1">{i.label}</span>
-                {(() => { const n = i.badge?.(user) ?? 0; return n > 0 ? <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[11px] font-semibold">{n}</span> : null; })()}
+                {(() => { const n = badges[i.href] ?? 0; return n > 0 ? <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[11px] font-semibold">{n}</span> : null; })()}
               </Link>
             );
           })}

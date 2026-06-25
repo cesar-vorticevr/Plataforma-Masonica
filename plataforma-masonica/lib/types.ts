@@ -117,6 +117,8 @@ export interface MensajeProfesional {
   cuerpo: string;
   fecha: string;
   leido: boolean;
+  de_nombre?: string;
+  a_nombre?: string;
 }
 
 export interface Trabajo {
