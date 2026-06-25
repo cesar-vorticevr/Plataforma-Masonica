@@ -1,28 +1,43 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { puedeVerTrabajo, nivelCamara } from "@/lib/roles";
+import { nivelCamara } from "@/lib/roles";
 import { Card, PageTitle, Button, Input, Textarea, Select, Badge, Empty, Modal } from "@/components/ui";
-import { listTrabajosLogia, addTrabajo, getUsuario } from "@/lib/data/store";
-import { Camara, CAMARA_LABEL, TRABAJO_LABEL } from "@/lib/types";
+import { listTrabajos, subir, urlDescarga } from "@/lib/data/trabajos";
+import { Camara, CAMARA_LABEL, TRABAJO_LABEL, Trabajo, Usuario } from "@/lib/types";
 import { fecha } from "@/lib/format";
 
-export default function Trabajos() {
+export default function TrabajosPage() {
   const { user } = useAuth();
+  if (!user || !user.grado) return null;
+  return <TrabajosInner user={user} />;
+}
+
+function TrabajosInner({ user }: { user: Usuario }) {
+  const [trabajos, setTrabajos] = useState<Trabajo[]>([]);
+  const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [filtro, setFiltro] = useState<string>("todos");
-  const [tick, setTick] = useState(0);
-  if (!user || !user.grado) return null;
+  const [reload, setReload] = useState(0);
 
-  const visibles = listTrabajosLogia(user.logia_id)
-    .filter(t => puedeVerTrabajo(user.grado, t.camara))
-    .filter(t => filtro === "todos" || t.camara === filtro);
+  useEffect(() => {
+    let activo = true;
+    listTrabajos().then(t => { if (activo) { setTrabajos(t); setLoading(false); } });
+    return () => { activo = false; };
+  }, [reload]);
 
   const camarasDisponibles: Camara[] = (["aprendiz", "companero", "maestro"] as Camara[])
     .filter(c => nivelCamara(c) <= nivelCamara(user.grado as Camara));
+  const visibles = trabajos.filter(t => filtro === "todos" || t.camara === filtro);
+
+  async function descargar(ruta?: string) {
+    if (!ruta) return;
+    const url = await urlDescarga(ruta);
+    if (url) window.open(url, "_blank", "noopener");
+  }
 
   return (
-    <div key={tick}>
+    <div>
       <PageTitle title="Trabajos, Burilados y Trazados"
         subtitle="Solo ves trabajos de tu cámara y de las inferiores."
         action={<Button onClick={() => setOpen(true)}>Subir trabajo</Button>} />
@@ -36,7 +51,8 @@ export default function Trabajos() {
         ))}
       </div>
 
-      {visibles.length === 0 ? <Card><Empty>No hay trabajos visibles para tu grado con este filtro.</Empty></Card> : (
+      {loading ? <Card><Empty>Cargando…</Empty></Card>
+        : visibles.length === 0 ? <Card><Empty>No hay trabajos visibles para tu grado con este filtro.</Empty></Card> : (
         <div className="grid sm:grid-cols-2 gap-4">
           {visibles.map(t => {
             const color = t.camara === "aprendiz" ? "blue" : t.camara === "companero" ? "gold" : "green";
@@ -48,22 +64,38 @@ export default function Trabajos() {
                 </div>
                 <h3 className="font-semibold text-navy mt-2">{t.titulo}</h3>
                 {t.descripcion && <p className="text-sm text-slate-600 mt-1">{t.descripcion}</p>}
-                <div className="text-xs text-slate-400 mt-2">{getUsuario(t.usuario_id)?.nombre.split("(")[0].trim()} · {fecha(t.fecha)}</div>
-                <Button variant="ghost" className="text-xs mt-3">📎 {t.archivo_nombre}</Button>
+                <div className="text-xs text-slate-400 mt-2">{t.autor_nombre ?? "—"} · {fecha(t.fecha)}</div>
+                <Button variant="ghost" className="text-xs mt-3" onClick={() => descargar(t.archivo_url)}>
+                  📎 {t.archivo_nombre ?? "archivo"}
+                </Button>
               </Card>
             );
           })}
         </div>
       )}
-      {open && <Subir userId={user.id} logiaId={user.logia_id} camaras={camarasDisponibles}
-        onClose={() => { setOpen(false); setTick(t => t + 1); }} />}
+      {open && <Subir user={user} camaras={camarasDisponibles}
+        onClose={() => { setOpen(false); setReload(x => x + 1); }} />}
     </div>
   );
 }
 
-function Subir({ userId, logiaId, camaras, onClose }:
-  { userId: string; logiaId: string; camaras: Camara[]; onClose: () => void }) {
-  const [f, setF] = useState({ titulo: "", descripcion: "", camara: camaras[camaras.length - 1], archivo: "" });
+function Subir({ user, camaras, onClose }:
+  { user: Usuario; camaras: Camara[]; onClose: () => void }) {
+  const [f, setF] = useState({ titulo: "", descripcion: "", camara: camaras[camaras.length - 1] });
+  const [archivo, setArchivo] = useState<File | null>(null);
+  const [error, setError] = useState("");
+  const [subiendo, setSubiendo] = useState(false);
+
+  async function guardar() {
+    if (!f.titulo || !archivo) { setError("Indica un título y selecciona un archivo."); return; }
+    setSubiendo(true); setError("");
+    const autor = user.nombre.split("(")[0].trim();
+    const { error } = await subir(user.id, user.logia_id, f.titulo, f.descripcion, f.camara, archivo, autor);
+    setSubiendo(false);
+    if (error) { setError("No se pudo subir el trabajo."); return; }
+    onClose();
+  }
+
   return (
     <Modal open onClose={onClose} title="Subir trabajo">
       <div className="space-y-3">
@@ -75,11 +107,13 @@ function Subir({ userId, logiaId, camaras, onClose }:
         <div>
           <label className="label">Archivo (PDF / Word)</label>
           <input type="file" accept=".pdf,.doc,.docx" className="input"
-            onChange={e => setF(s => ({ ...s, archivo: e.target.files?.[0]?.name ?? "" }))} />
+            onChange={e => setArchivo(e.target.files?.[0] ?? null)} />
+          <p className="text-xs text-slate-400 mt-1">Se almacena de forma privada; la descarga usa un enlace temporal.</p>
         </div>
+        {error && <p className="text-rose-600 text-sm">{error}</p>}
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-          <Button onClick={() => { if (f.titulo) { addTrabajo({ usuario_id: userId, logia_id: logiaId, titulo: f.titulo, descripcion: f.descripcion, camara: f.camara, archivo_nombre: f.archivo || "trabajo.pdf" }); onClose(); } }}>Subir</Button>
+          <Button onClick={guardar} disabled={subiendo}>{subiendo ? "Subiendo…" : "Subir"}</Button>
         </div>
       </div>
     </Modal>

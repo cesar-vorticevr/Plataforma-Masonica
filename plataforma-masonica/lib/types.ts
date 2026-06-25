@@ -124,6 +124,8 @@ export interface Trabajo {
   titulo: string;
   descripcion?: string;
   archivo_nombre: string;
+  archivo_url?: string;
+  autor_nombre?: string;
   camara: Camara;
   fecha: string;
 }

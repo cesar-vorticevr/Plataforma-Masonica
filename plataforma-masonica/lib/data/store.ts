@@ -2,7 +2,7 @@
 import { DB, seed } from "./seed";
 import {
   Evento,
-  Logia, PerfilProfesional, Trabajo, Usuario, Grado, Rol,
+  Logia, PerfilProfesional, Usuario, Grado, Rol,
 } from "../types";
 
 const KEY = "plataforma_masonica_db_v1";
@@ -102,12 +102,7 @@ export function enviarMensaje(de: string, a: string, cuerpo: string) {
   persist();
 }
 
-// ---------- Trabajos ----------
-export const listTrabajosLogia = (logiaId: string) =>
-  db().trabajos.filter(t => t.logia_id === logiaId).sort((a,b)=>b.fecha.localeCompare(a.fecha));
-export function addTrabajo(t: Omit<Trabajo,"id"|"fecha">) {
-  db().trabajos.push({ ...t, id: uid(), fecha: new Date().toISOString() }); persist();
-}
+// (Trabajos migrado a Supabase + Storage: ver lib/data/trabajos.ts)
 
 // ---------- Tesorería ----------
 export const getCapita = (logiaId: string) => db().capitas.find(c => c.logia_id === logiaId);
