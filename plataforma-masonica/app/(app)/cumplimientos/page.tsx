@@ -1,42 +1,28 @@
-"use client";
-import { useEffect, useState } from "react";
-import { useAuth } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import { cargarPerfil } from "@/lib/data/perfil";
 import { Card, PageTitle, Stat, Badge } from "@/components/ui";
-import { getCapita, listPagos, PagoRow } from "@/lib/data/tesoreria";
-import { listTenidas, listAsistencias, AsistenciaRow } from "@/lib/data/tenidas";
+import { getCapita, listPagos } from "@/lib/data/tesoreria";
+import { listTenidas, listAsistencias } from "@/lib/data/tenidas";
 import { rangoCapitas, mesAplica, cumplimiento } from "@/lib/capitas";
-import { MESES, Tenida, Usuario } from "@/lib/types";
+import { MESES } from "@/lib/types";
 import { money, fecha } from "@/lib/format";
 
-export default function Cumplimientos() {
-  const { user } = useAuth();
+// Server Component puro (sin interactividad): calcula cápitas y asistencia del propio hermano.
+export default async function Cumplimientos() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
-  return <CumplimientosInner user={user} />;
-}
-
-function CumplimientosInner({ user }: { user: Usuario }) {
+  const perfil = await cargarPerfil(supabase, user.id);
+  if (!perfil) return null;
   const anio = new Date().getFullYear();
-  const [capita, setCapita] = useState(0);
-  const [pagos, setPagos] = useState<PagoRow[]>([]);
-  const [tenidas, setTenidas] = useState<Tenida[]>([]);
-  const [asistencias, setAsistencias] = useState<AsistenciaRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [capita, pagos, tenidas, asistencias] = await Promise.all([
+    getCapita(supabase, perfil.logia_id),
+    listPagos(supabase, anio),
+    listTenidas(supabase, perfil.logia_id),
+    listAsistencias(supabase),
+  ]);
 
-  useEffect(() => {
-    let activo = true;
-    (async () => {
-      const [cap, pg, ts, as] = await Promise.all([
-        getCapita(user.logia_id), listPagos(anio), listTenidas(user.logia_id), listAsistencias(),
-      ]);
-      if (!activo) return;
-      setCapita(cap); setPagos(pg); setTenidas(ts); setAsistencias(as); setLoading(false);
-    })();
-    return () => { activo = false; };
-  }, [user.logia_id, anio]);
-
-  if (loading) return <div className="min-h-[40vh] grid place-items-center text-slate-400">Cargando…</div>;
-
-  const rango = rangoCapitas(user.fecha_inicio, user.fecha_registro, anio);
+  const rango = rangoCapitas(perfil.fecha_inicio, perfil.fecha_registro, anio);
   const c = cumplimiento(rango, pagos);
   const debe = c.pendientes * capita;
   const presentes = asistencias.filter(a => a.presente).length;

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { Card, PageTitle, Button, SemaforoBadge, Badge, Empty } from "@/components/ui";
+import { createClient } from "@/lib/supabase/client";
 import { PREGUNTAS, evaluar, SEMAFORO_TEXTO, mejora } from "@/lib/health";
 import {
   listEvaluaciones, addEvaluacion, tieneConsentimiento, registrarConsentimiento, AVISO_PRIVACIDAD_VERSION,
@@ -25,8 +26,8 @@ function SaludInner({ userId }: { userId: string }) {
   const [guardando, setGuardando] = useState(false);
   const [reload, setReload] = useState(0);
 
-  useEffect(() => { listEvaluaciones(userId).then(setEvals); }, [userId, reload]);
-  useEffect(() => { tieneConsentimiento(userId, AVISO_PRIVACIDAD_VERSION).then(setConsentido); }, [userId]);
+  useEffect(() => { listEvaluaciones(createClient(), userId).then(setEvals); }, [userId, reload]);
+  useEffect(() => { tieneConsentimiento(createClient(), userId, AVISO_PRIVACIDAD_VERSION).then(setConsentido); }, [userId]);
 
   const ultima = evals[evals.length - 1];
   const previa = evals[evals.length - 2];
@@ -34,7 +35,7 @@ function SaludInner({ userId }: { userId: string }) {
   function set(id: string, v: RespuestaSalud) { setResp(s => ({ ...s, [id]: v })); }
 
   async function aceptarYContinuar() {
-    await registrarConsentimiento(userId, AVISO_PRIVACIDAD_VERSION);
+    await registrarConsentimiento(createClient(), userId, AVISO_PRIVACIDAD_VERSION);
     setConsentido(true);
   }
 
@@ -42,7 +43,7 @@ function SaludInner({ userId }: { userId: string }) {
     setGuardando(true);
     try {
       const r = evaluar(resp);
-      await addEvaluacion({ usuario_id: userId, respuestas: resp, ...r });
+      await addEvaluacion(createClient(), { usuario_id: userId, respuestas: resp, ...r });
       setResp({}); setTab("panel"); setReload(x => x + 1);
     } finally { setGuardando(false); }
   }

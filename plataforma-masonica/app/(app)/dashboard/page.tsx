@@ -1,13 +1,11 @@
-"use client";
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useAuth } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import { cargarPerfil } from "@/lib/data/perfil";
 import { accesoCompleto, esAdminLogia } from "@/lib/roles";
-import { createClient } from "@/lib/supabase/client";
 import { Card, PageTitle, Stat, Badge } from "@/components/ui";
-import { ROL_LABEL, GRADO_LABEL, EvaluacionSalud, Evento, Usuario } from "@/lib/types";
+import { ROL_LABEL, GRADO_LABEL } from "@/lib/types";
 import { listEvaluaciones } from "@/lib/data/salud";
-import { getCapita, listPagos } from "@/lib/data/tesoreria";
+import { listPagos } from "@/lib/data/tesoreria";
 import { listTenidas, listAsistencias } from "@/lib/data/tenidas";
 import { listEventos } from "@/lib/data/eventos";
 import { rangoCapitas, cumplimiento } from "@/lib/capitas";
@@ -15,57 +13,36 @@ import { fecha } from "@/lib/format";
 
 interface LogiaInfo { nombre: string; oriente: string }
 
-export default function Dashboard() {
-  const { user } = useAuth();
+// Server Component puro: arma el panel de inicio del hermano con datos obtenidos en el servidor.
+export default async function Dashboard() {
+  const supabase = await createClient();
+  const { data: { user: authUser } } = await supabase.auth.getUser();
+  if (!authUser) return null;
+  const user = await cargarPerfil(supabase, authUser.id);
   if (!user) return null;
-  return <DashboardInner user={user} />;
-}
 
-function DashboardInner({ user }: { user: Usuario }) {
   const anio = new Date().getFullYear();
   const validado = accesoCompleto(user);
   const puedeContar = esAdminLogia(user.rol) || user.rol === "tesorero";
 
-  const [logia, setLogia] = useState<LogiaInfo | null>(null);
-  const [ultima, setUltima] = useState<EvaluacionSalud | null>(null);
-  const [cap, setCap] = useState({ pagados: 0, count: 0, pct: 0 });
-  const [asis, setAsis] = useState({ presentes: 0, total: 0, pct: 0 });
-  const [conteo, setConteo] = useState<number | null>(null);
-  const [eventos, setEventos] = useState<Evento[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [logia, evals, pagos, tenidas, asistencias, conteo, eventos] = await Promise.all([
+    supabase.from("logias").select("nombre,oriente").eq("id", user.logia_id).single().then(r => r.data as LogiaInfo | null),
+    listEvaluaciones(supabase, user.id),
+    listPagos(supabase, anio),
+    listTenidas(supabase, user.logia_id),
+    listAsistencias(supabase),
+    puedeContar
+      ? supabase.from("perfiles").select("id", { count: "exact", head: true }).eq("logia_id", user.logia_id).then(r => r.count ?? 0)
+      : Promise.resolve(null),
+    listEventos(supabase),
+  ]);
 
-  useEffect(() => {
-    let activo = true;
-    (async () => {
-      const sb = createClient();
-      const [lg, evals, capita, pagos, tenidas, asistencias, cnt, evs] = await Promise.all([
-        sb.from("logias").select("nombre,oriente").eq("id", user.logia_id).single().then(r => r.data as LogiaInfo | null),
-        listEvaluaciones(user.id),
-        getCapita(user.logia_id),
-        listPagos(anio),
-        listTenidas(user.logia_id),
-        listAsistencias(),
-        puedeContar
-          ? sb.from("perfiles").select("id", { count: "exact", head: true }).eq("logia_id", user.logia_id).then(r => r.count ?? 0)
-          : Promise.resolve(null),
-        listEventos(sb),
-      ]);
-      if (!activo) return;
-      setEventos(evs.slice(0, 3));
-      setLogia(lg);
-      setUltima(evals.length ? evals[evals.length - 1] : null);
-      const c = cumplimiento(rangoCapitas(user.fecha_inicio, user.fecha_registro, anio), pagos);
-      setCap({ pagados: c.pagados, count: c.count, pct: c.pct });
-      const presentes = asistencias.filter(a => a.presente).length;
-      setAsis({ presentes, total: tenidas.length, pct: tenidas.length ? Math.round((presentes / tenidas.length) * 100) : 0 });
-      setConteo(cnt);
-      setLoading(false);
-      void capita; // el monto no se muestra aquí
-    })();
-    return () => { activo = false; };
-  }, [user.id, user.logia_id, user.fecha_inicio, user.fecha_registro, anio, puedeContar]);
-
-  if (loading) return <div className="min-h-[40vh] grid place-items-center text-slate-400">Cargando…</div>;
+  const ultima = evals.length ? evals[evals.length - 1] : null;
+  const c = cumplimiento(rangoCapitas(user.fecha_inicio, user.fecha_registro, anio), pagos);
+  const cap = { pagados: c.pagados, count: c.count, pct: c.pct };
+  const presentes = asistencias.filter(a => a.presente).length;
+  const asis = { presentes, total: tenidas.length, pct: tenidas.length ? Math.round((presentes / tenidas.length) * 100) : 0 };
+  const proximos = eventos.slice(0, 3);
 
   const saludValue = ultima
     ? (ultima.semaforo_metabolico === "rojo" || ultima.semaforo_oncologico === "rojo" ? "Atención"
@@ -106,9 +83,9 @@ function DashboardInner({ user }: { user: Usuario }) {
             <h3 className="font-semibold text-navy">Próximos eventos</h3>
             <Link href="/eventos" className="text-royal text-sm">Ver todos</Link>
           </div>
-          {eventos.length === 0 ? <p className="text-slate-400 text-sm">Sin eventos.</p> :
+          {proximos.length === 0 ? <p className="text-slate-400 text-sm">Sin eventos.</p> :
             <ul className="space-y-3">
-              {eventos.map(e => (
+              {proximos.map(e => (
                 <li key={e.id} className="flex items-start gap-3">
                   <div className="text-center bg-slate-100 rounded-lg px-2 py-1 text-xs">
                     <div className="font-bold text-navy">{new Date(e.fecha_evento).getDate()}</div>
