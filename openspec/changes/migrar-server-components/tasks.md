@@ -36,32 +36,42 @@
 
 ## 3. Resto de módulos (uno por commit, mismo patrón page→isla)
 
-- [ ] 3.1 `dashboard`
-- [ ] 3.2 `generales`
-- [ ] 3.3 `eventos`
-- [ ] 3.4 `trabajos`
-- [ ] 3.5 `mensajes`
-- [ ] 3.6 `buzon`
-- [ ] 3.7 `correspondencia`
-- [ ] 3.8 `tenidas`
-- [ ] 3.9 `tesoreria`
-- [ ] 3.10 `cumplimientos`
-- [ ] 3.11 `admin`
+> Migrados en orden de dependencias (hojas → agregadores), no numérico, por los módulos de datos
+> compartidos. Todos los `lib/data/*` involucrados pasan a agnósticos (sb inyectado).
+> Gates estáticos (typecheck/lint/build) en verde; validación funcional en navegador pendiente.
+
+- [x] 3.1 `dashboard` (server component puro, sin isla)
+- [x] 3.2 `generales`
+- [x] 3.3 `eventos`
+- [x] 3.4 `trabajos`
+- [x] 3.5 `mensajes`
+- [x] 3.6 `buzon`
+- [x] 3.7 `correspondencia`
+- [x] 3.8 `tenidas`
+- [x] 3.9 `tesoreria`
+- [x] 3.10 `cumplimientos` (server component puro, sin isla)
+- [x] 3.11 `admin`
 
 ## 4. Salud y estadísticas (privacidad — al final)
 
-- [ ] 4.1 `salud`: migrar a server page con cuidado; verificar que ningún dato individual de salud llegue al
-      cliente sin corresponder (consentimiento + RLS individual privada).
-- [ ] 4.2 `estadisticas` / `salud-estadisticas`: confirmar que solo viaja agregado/anonimizado al cliente.
+- [x] 4.1 `salud`: page server carga SOLO el dato propio (RLS solo-dueño) + consentimiento; `SaludClient`
+      isla lee de props y muta con browser client (`router.refresh()`). Ningún dato individual de terceros
+      llega al cliente (más privado que la query cliente anterior). `salud.ts` ya agnóstico.
+- [x] 4.2 `estadisticas` / `salud-estadisticas`: `salud-estadisticas.ts` agnóstico; page server trae el
+      agregado via RPC security definer (con supresión por cohorte) + logias; `EstadisticasClient` recalcula
+      al cambiar logia. Solo viaja agregado/anonimizado.
 
 ## 5. Auth pages
 
-- [ ] 5.1 `login` y `register`: shell server + isla de formulario cliente (o documentar por qué se dejan
-      como están al ser puramente interactivas).
+- [x] 5.1 `login` y `register` → server components (con `metadata`) + islas `LoginForm`/`RegisterForm`.
+      `register` carga las logias en el servidor (sin `useEffect`).
 
 ## 6. Cierre
 
-- [ ] 6.1 Auditar: `grep -l '"use client"' app/**/page.tsx` → solo las islas justificadas; `lib/data/*.ts`
-      sin `"use client"`.
-- [ ] 6.2 `lib/supabase/server.ts` ya con importadores reales (server pages); `proxy.ts` con matcher correcto.
-- [ ] 6.3 `npm run typecheck`, `npm run lint`, `npm run build` en verde; smoke test de cada ruta.
+- [x] 6.1 Auditoría: **0 páginas `"use client"`** (todas server). `lib/data/*` sin `"use client"` salvo
+      `store.ts` (store **mock** preexistente, usado solo por el badge `nuevosEventos` de `nav.ts`; fuera del
+      alcance de esta migración RSC — corresponde a una limpieza de mock aparte).
+- [x] 6.2 `lib/supabase/server.ts` con importadores reales (todas las server pages); `proxy.ts` con matcher
+      correcto (excluye estáticos), refresco con `getClaims()`.
+- [x] 6.3 `npm run typecheck`, `npm run lint`, `npm run build` en verde (21 rutas `ƒ Dynamic`, Proxy
+      reconocido). **Pendiente:** smoke test interactivo de cada ruta (requiere `supabase start` + `dev`).

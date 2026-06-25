@@ -1,32 +1,31 @@
-"use client";
 // Buzón interlogial (Supabase + Storage). RLS: solo administradores (tabla y bucket).
-import { createClient } from "../supabase/client";
+// Módulo agnóstico: recibe el SupabaseClient por parámetro.
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 const BUCKET = "buzon";
-const sb = () => createClient();
 
 export interface DocBuzon { id: string; titulo: string; tipo: string; archivo_url: string; fecha: string }
 
-export async function listBuzon(): Promise<DocBuzon[]> {
-  const { data } = await sb()
+export async function listBuzon(sb: SupabaseClient): Promise<DocBuzon[]> {
+  const { data } = await sb
     .from("buzon_documentos").select("id,titulo,tipo,archivo_url,fecha")
     .order("fecha", { ascending: false });
   return (data ?? []) as DocBuzon[];
 }
 
 export async function subir(
-  titulo: string, tipo: "pdf" | "word", file: File, autorId: string,
+  sb: SupabaseClient, titulo: string, tipo: "pdf" | "word", file: File, autorId: string,
 ): Promise<{ error: string | null }> {
   const ruta = `${crypto.randomUUID()}-${file.name}`;
-  const up = await sb().storage.from(BUCKET).upload(ruta, file);
+  const up = await sb.storage.from(BUCKET).upload(ruta, file);
   if (up.error) return { error: up.error.message };
-  const { error } = await sb()
+  const { error } = await sb
     .from("buzon_documentos")
     .insert({ titulo, tipo, archivo_url: ruta, autor_id: autorId });
   return { error: error ? error.message : null };
 }
 
-export async function urlDescarga(ruta: string): Promise<string | null> {
-  const { data } = await sb().storage.from(BUCKET).createSignedUrl(ruta, 3600);
+export async function urlDescarga(sb: SupabaseClient, ruta: string): Promise<string | null> {
+  const { data } = await sb.storage.from(BUCKET).createSignedUrl(ruta, 3600);
   return data?.signedUrl ?? null;
 }

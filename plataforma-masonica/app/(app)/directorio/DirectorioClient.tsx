@@ -134,7 +134,7 @@ function Contactar({ user, para, onClose, onSent }:
   async function mandar() {
     if (!txt.trim()) return;
     setEnviando(true);
-    await enviar(user.id, user.nombre, para.id, para.nombre, txt.trim());
+    await enviar(createClient(), user.id, user.nombre, para.id, para.nombre, txt.trim());
     setEnviando(false);
     onSent();
   }
