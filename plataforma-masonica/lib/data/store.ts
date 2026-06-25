@@ -1,7 +1,7 @@
 "use client";
 import { DB, seed } from "./seed";
 import {
-  Correspondencia, DocumentoBuzon, Evento,
+  Correspondencia, Evento,
   Logia, PerfilProfesional, Trabajo, Usuario, Grado, Rol,
 } from "../types";
 
@@ -84,11 +84,8 @@ export function addEvento(e: Omit<Evento,"id"|"creado">) {
   db().eventos.push({ ...e, id: uid(), creado: new Date().toISOString() }); persist();
 }
 
-// ---------- Buzón / Correspondencia ----------
-export const listBuzon = () => db().buzon.slice().sort((a,b)=>b.fecha.localeCompare(a.fecha));
-export function addBuzon(d: Omit<DocumentoBuzon,"id"|"fecha">) {
-  db().buzon.push({ ...d, id: uid(), fecha: new Date().toISOString() }); persist();
-}
+// ---------- Correspondencia ----------
+// (Buzón migrado a Supabase + Storage: ver lib/data/buzon.ts)
 export function listCorrespondencia(logiaId: string): Correspondencia[] {
   return db().correspondencia
     .filter(c => c.de_logia_id === logiaId || c.destinatarios_logia_ids.includes(logiaId))
