@@ -1,14 +1,9 @@
-"use client";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 
-export default function Home() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
-  useEffect(() => {
-    if (loading) return;
-    router.replace(user ? "/dashboard" : "/login");
-  }, [user, loading, router]);
-  return <div className="min-h-screen grid place-items-center text-slate-400">Cargando…</div>;
+// Resuelve el destino en el servidor según haya sesión, sin pasar por un estado de carga cliente.
+export default async function Home() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  redirect(user ? "/dashboard" : "/login");
 }

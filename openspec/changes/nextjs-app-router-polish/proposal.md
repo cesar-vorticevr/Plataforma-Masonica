@@ -30,16 +30,22 @@ Fase del roadmap: **Fase 0 / pulido** (no funcional). No depende de "decisiones 
 
 ## Non-goals
 
-- **Migrar a Server Components / data fetching server-side.** El all-client actual es consecuencia
-  del mock (`lib/data/store.ts` es `"use client"`); se corrige de raíz en la **Fase 1** (cableado de
-  Supabase: Server Components + consultas server-side con RLS + `middleware.ts` para refresh de sesión).
-  NO es parte de este cambio.
-- Server Actions / route handlers (también Fase 1).
+- **Migrar a Server Components / data fetching server-side.** NO es parte de este cambio; se aborda en
+  el change dedicado **`migrar-server-components`** (Server Components por defecto, consultas server-side
+  con RLS, `proxy.ts` para refresh de sesión — en Next 16 *Middleware* se renombró a *Proxy*).
+  > **Actualización (2026-06-24):** la premisa original ("el all-client se corrige solo al cablear
+  > Supabase") quedó superada. El cableado real (directorio, mensajería, trabajos) cerró el mock pero
+  > **mantuvo el patrón all-client**, así que la migración a server se planificó como change propio en
+  > vez de caer sola en la "Fase 1".
+- Server Actions / route handlers (ver `migrar-server-components`; las mutaciones siguen en islas cliente
+  en su primera fase).
 
 ## Notas / hallazgos relacionados (de la auditoría)
 
-- **Server Components:** 24 archivos `use client`, solo 2 server. Deuda consciente del mock → **Fase 1**.
-- **`middleware.ts`** para refresh de sesión Supabase (`@supabase/ssr`) → **Fase 1**.
+- **Server Components:** 17/18 páginas y 13/14 módulos de datos son `use client` → ahora se aborda en el
+  change **`migrar-server-components`** (server-first + datos en servidor + gate de auth en servidor).
+- **`proxy.ts`** (antes `middleware.ts`; renombrado en Next 16) para refresh de sesión Supabase
+  (`@supabase/ssr`) → **`migrar-server-components`**.
 - **Next 16.3:** cuando sea estable (hoy en canary), el `AGENTS.md`/`CLAUDE.md` con best-practices se
   auto-genera vía `next dev`, y se desbloquean las skills de Next de Vercel. **Revisitar entonces**
   (upgrade menor 16.2→16.3). No hand-escribir esas reglas a mano.
