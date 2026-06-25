@@ -56,6 +56,8 @@ export interface PerfilProfesional {
   descripcion?: string;
   palabras_clave?: string[];
   mostrar_en_directorio: boolean;
+  nombre?: string;
+  logia_id?: string;
 }
 
 // Respuestas del cuestionario de salud: por cada pregunta, un valor si/no (boolean o "si"/"no"),

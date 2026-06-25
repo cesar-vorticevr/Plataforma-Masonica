@@ -2,7 +2,7 @@
 import { DB, seed } from "./seed";
 import {
   Evento,
-  Logia, PerfilProfesional, Usuario, Grado, Rol,
+  Logia, Usuario, Grado, Rol,
 } from "../types";
 
 const KEY = "plataforma_masonica_db_v1";
@@ -61,16 +61,7 @@ export function crearLogia(data: { nombre: string; numero: number; oriente: stri
   db().logias.push(l); persist(); return l;
 }
 
-// ---------- Perfil ----------
-// (Generales migrado a Supabase: ver lib/data/generales.ts)
-export const getPerfil = (uid: string) => db().perfiles.find(p => p.usuario_id === uid);
-export function guardarPerfil(p: PerfilProfesional) {
-  const i = db().perfiles.findIndex(x => x.usuario_id === p.usuario_id);
-  if (i >= 0) db().perfiles[i] = p; else db().perfiles.push(p);
-  persist();
-}
-export const listPerfilesDirectorio = () =>
-  db().perfiles.filter(p => p.mostrar_en_directorio);
+// (Generales → lib/data/generales.ts · Directorio → lib/data/directorio.ts, en Supabase)
 
 // ---------- Salud migrada a lib/data/salud.ts; estadísticas a función security definer. ----------
 
