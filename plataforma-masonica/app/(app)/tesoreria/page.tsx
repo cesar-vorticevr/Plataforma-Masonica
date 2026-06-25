@@ -4,6 +4,8 @@ import { listMiembros, getCapita, listPagos } from "@/lib/data/tesoreria";
 import TesoreriaClient from "./TesoreriaClient";
 
 // Server Component: carga miembros, cápita y pagos del año en el servidor (RLS por logia).
+export const metadata = { title: "Tesorería · Plataforma Masónica" };
+
 export default async function Tesoreria() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

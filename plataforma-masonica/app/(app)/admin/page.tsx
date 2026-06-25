@@ -7,6 +7,8 @@ import AdminClient from "./AdminClient";
 
 // Server Component: carga el estado inicial de administración (logias, logia y hermanos) en el
 // servidor. La isla gestiona el cambio de logia y las mutaciones.
+export const metadata = { title: "Administración · Plataforma Masónica" };
+
 export default async function Admin() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

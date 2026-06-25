@@ -3,6 +3,8 @@ import { getGenerales } from "@/lib/data/generales";
 import GeneralesForm from "./GeneralesForm";
 
 // Server Component: carga los generales del usuario en el servidor (RLS) y los pasa al formulario.
+export const metadata = { title: "Generales · Plataforma Masónica" };
+
 export default async function GeneralesPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
