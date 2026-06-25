@@ -1,3 +1,14 @@
+<!-- BEGIN:nextjs-agent-rules -->
+
+# Next.js: SIEMPRE lee los docs antes de programar
+
+Antes de cualquier trabajo de Next.js, busca y lee el doc relevante en
+`plataforma-masonica/node_modules/next/dist/docs/`. Tu conocimiento de entrenamiento puede estar
+desactualizado: esos docs vienen con la versión instalada de `next` y son la fuente de verdad
+(p. ej. en Next 16 *Middleware* se renombró a *Proxy* → `proxy.ts`).
+
+<!-- END:nextjs-agent-rules -->
+
 # AGENTS.md — Plataforma Masónica · Gran Logia de Estado "Restauración"
 
 Guía para agentes de IA y personas que colaboran en este repositorio. Léela antes de

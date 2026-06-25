@@ -1,8 +1,9 @@
 "use client";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { EstadoUsuario, Grado, Rol, Usuario } from "./types";
+import { Usuario } from "./types";
 import { createClient } from "./supabase/client";
+import { cargarPerfil as cargarPerfilDB } from "./data/perfil";
 
 interface AuthCtx {
   user: Usuario | null;
@@ -18,45 +19,43 @@ export interface RegistroData {
 
 const Ctx = createContext<AuthCtx | null>(null);
 
-interface PerfilRow {
-  id: string; nombre: string; email: string; rol: Rol; grado: Grado;
-  logia_id: string | null; estado: EstadoUsuario; foto: string | null;
-  fecha_registro: string; fecha_inicio: string | null;
-}
-function perfilAUsuario(p: PerfilRow): Usuario {
-  return {
-    id: p.id, nombre: p.nombre, email: p.email, rol: p.rol, grado: p.grado,
-    logia_id: p.logia_id ?? "", estado: p.estado, foto: p.foto ?? undefined,
-    fecha_registro: p.fecha_registro, fecha_inicio: p.fecha_inicio ?? undefined,
-  };
-}
-
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUserState] = useState<Usuario | null>(null);
-  const [loading, setLoading] = useState(true);
+export function AuthProvider({
+  children,
+  initialUser,
+}: {
+  children: React.ReactNode;
+  // Sembrado desde el server layout (getUser + perfil). Si se omite (uso legacy), el provider
+  // resuelve la sesión en cliente. Si llega (incl. null), la sesión ya está resuelta en servidor.
+  initialUser?: Usuario | null;
+}) {
+  const sembrado = initialUser !== undefined;
+  const [user, setUserState] = useState<Usuario | null>(initialUser ?? null);
+  const [loading, setLoading] = useState(!sembrado);
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
   const cargarPerfil = useCallback(async (uid: string): Promise<Usuario | null> => {
-    const { data } = await supabase.from("perfiles").select("*").eq("id", uid).single();
-    const u = data ? perfilAUsuario(data as PerfilRow) : null;
+    const u = await cargarPerfilDB(supabase, uid);
     setUserState(u);
     return u;
   }, [supabase]);
 
   useEffect(() => {
     let activo = true;
-    supabase.auth.getUser().then(async ({ data }) => {
-      if (!activo) return;
-      if (data.user) await cargarPerfil(data.user.id);
-      setLoading(false);
-    });
+    // Solo resolvemos la sesión en cliente si no vino sembrada desde el servidor.
+    if (!sembrado) {
+      supabase.auth.getUser().then(async ({ data }) => {
+        if (!activo) return;
+        if (data.user) await cargarPerfil(data.user.id);
+        setLoading(false);
+      });
+    }
     const { data: sub } = supabase.auth.onAuthStateChange((_evento, session) => {
       if (session?.user) void cargarPerfil(session.user.id);
       else setUserState(null);
     });
     return () => { activo = false; sub.subscription.unsubscribe(); };
-  }, [supabase, cargarPerfil]);
+  }, [supabase, cargarPerfil, sembrado]);
 
   async function login(email: string, password: string) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });

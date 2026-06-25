@@ -1,40 +1,38 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-// Proxy (antes "middleware" en Next < 16): refresca la sesión de Supabase en cada
-// request y protege las rutas privadas en el servidor.
-const PUBLICAS = ["/", "/login", "/register", "/privacidad"];
-
+// Proxy (en Next 16, antes "Middleware"). Refresca la sesión de Supabase en cada request y
+// propaga las cookies renovadas a la respuesta. NO autoriza: el gate real vive en el server
+// layout (getUser) y en las RLS. Patrón @supabase/ssr + doc de Proxy de Next.
 export async function proxy(request: NextRequest) {
-  const response = NextResponse.next({ request: { headers: request.headers } });
+  let response = NextResponse.next({ request });
 
-  // Solo actúa en modo supabase con configuración presente; en mock, pasa de largo.
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (process.env.NEXT_PUBLIC_DATA_MODE !== "supabase" || !url || !key) return response;
-
-  const supabase = createServerClient(url, key, {
-    cookies: {
-      getAll() { return request.cookies.getAll(); },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          response = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options));
+        },
       },
-    },
-  });
+    }
+  );
 
-  // getUser() valida contra el servidor de Auth (no confiar solo en getSession).
-  const { data: { user } } = await supabase.auth.getUser();
+  // Refresca el token si expiró y valida la sesión (getClaims → getSession). No usamos
+  // getSession() a secas para autorizar; aquí solo es para mantener viva la sesión.
+  await supabase.auth.getClaims();
 
-  const path = request.nextUrl.pathname;
-  if (!user && !PUBLICAS.includes(path)) {
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/login";
-    return NextResponse.redirect(loginUrl);
-  }
   return response;
 }
 
 export const config = {
-  // Excluye estáticos y /api (el registro debe ser accesible sin sesión).
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
+  // Corre en todas las rutas salvo estáticos e imágenes (matcher oficial de Next).
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
 };
