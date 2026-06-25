@@ -86,7 +86,7 @@ export interface Evento {
   alcance: AlcanceEvento;
   logia_id: string | null;
   autor_id: string;
-  creado: string;
+  created_at: string;
 }
 
 export interface DocumentoBuzon {
