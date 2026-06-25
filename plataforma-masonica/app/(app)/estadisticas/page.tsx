@@ -6,6 +6,8 @@ import EstadisticasClient, { LogiaOpcion } from "./EstadisticasClient";
 
 // Server Component: carga el agregado anonimizado (RPC security definer) y, para admins globales,
 // la lista de logias. Nunca trae datos individuales de salud.
+export const metadata = { title: "Estadísticas · Plataforma Masónica" };
+
 export default async function Estadisticas() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

@@ -14,6 +14,8 @@ import { fecha } from "@/lib/format";
 interface LogiaInfo { nombre: string; oriente: string }
 
 // Server Component puro: arma el panel de inicio del hermano con datos obtenidos en el servidor.
+export const metadata = { title: "Inicio · Plataforma Masónica" };
+
 export default async function Dashboard() {
   const supabase = await createClient();
   const { data: { user: authUser } } = await supabase.auth.getUser();

@@ -8,6 +8,8 @@ import { MESES } from "@/lib/types";
 import { money, fecha } from "@/lib/format";
 
 // Server Component puro (sin interactividad): calcula cápitas y asistencia del propio hermano.
+export const metadata = { title: "Mis cumplimientos · Plataforma Masónica" };
+
 export default async function Cumplimientos() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
