@@ -1,11 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 import { can } from "@/lib/roles";
 import { Card, PageTitle, Button, Input, Textarea, Select, Badge, Empty, Modal } from "@/components/ui";
-import { addEvento } from "@/lib/data/eventos";
+import { addEvento, marcarEventosVistos } from "@/lib/data/eventos";
 import { Evento } from "@/lib/types";
 import { fecha } from "@/lib/format";
 
@@ -15,6 +15,12 @@ export default function EventosClient({ eventos }: { eventos: Evento[] }) {
   const { user } = useAuth();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+
+  // Al abrir Eventos, marca todo como visto y avisa a AppShell para que el badge baje a 0.
+  useEffect(() => {
+    marcarEventosVistos(createClient()).then(() => window.dispatchEvent(new Event("notif")));
+  }, []);
+
   if (!user) return null;
   const puede = can.publicarEventos(user);
   const global = user.rol === "gran_secretario" || user.rol === "master";
