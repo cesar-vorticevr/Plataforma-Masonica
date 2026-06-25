@@ -1,6 +1,7 @@
 import { Usuario } from "@/lib/types";
 import { can, accesoCompleto } from "@/lib/roles";
 import { contarNoLeidos } from "@/lib/data/mensajes";
+import { contarEventosNuevos } from "@/lib/data/eventos";
 import { createClient } from "@/lib/supabase/client";
 
 export interface NavItem { href: string; label: string; icon: string; show: (u: Usuario) => boolean; badge?: (u: Usuario) => Promise<number> | number; }
@@ -13,7 +14,7 @@ export const NAV: NavItem[] = [
   { href: "/cumplimientos", label: "Cumplimientos", icon: "✅", show: () => true },
   { href: "/directorio", label: "Directorio", icon: "💼", show: u => can.directorio(u) },
   { href: "/mensajes", label: "Mensajes", icon: "✉️", show: u => accesoCompleto(u), badge: u => contarNoLeidos(createClient(), u.id) },
-  { href: "/eventos", label: "Eventos", icon: "📅", show: () => true },
+  { href: "/eventos", label: "Eventos", icon: "📅", show: () => true, badge: () => contarEventosNuevos(createClient()) },
   { href: "/trabajos", label: "Trabajos", icon: "📜", show: u => can.trabajos(u) },
   { href: "/buzon", label: "Buzón interlogial", icon: "🗂️", show: u => can.buzonInterlogial(u) },
   { href: "/correspondencia", label: "Correspondencia", icon: "📨", show: u => can.correspondencia(u) },

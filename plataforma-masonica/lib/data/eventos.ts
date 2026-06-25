@@ -17,3 +17,14 @@ export async function addEvento(sb: SupabaseClient, ev: NuevoEvento): Promise<{ 
   const { error } = await sb.from("eventos").insert(ev);
   return { error: error ? error.message : null };
 }
+
+// Badge de no vistos: cuenta eventos visibles publicados tras el último visto del hermano (RPC).
+export async function contarEventosNuevos(sb: SupabaseClient): Promise<number> {
+  const { data } = await sb.rpc("contar_eventos_nuevos");
+  return (data as number | null) ?? 0;
+}
+
+// Marca todos los eventos como vistos para el hermano actual (al abrir /eventos).
+export async function marcarEventosVistos(sb: SupabaseClient): Promise<void> {
+  await sb.rpc("marcar_eventos_vistos");
+}
