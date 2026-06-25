@@ -1,7 +1,7 @@
 "use client";
 import { DB, seed } from "./seed";
 import {
-  Correspondencia, Evento,
+  Evento,
   Logia, PerfilProfesional, Trabajo, Usuario, Grado, Rol,
 } from "../types";
 
@@ -84,16 +84,7 @@ export function addEvento(e: Omit<Evento,"id"|"creado">) {
   db().eventos.push({ ...e, id: uid(), creado: new Date().toISOString() }); persist();
 }
 
-// ---------- Correspondencia ----------
-// (Buzón migrado a Supabase + Storage: ver lib/data/buzon.ts)
-export function listCorrespondencia(logiaId: string): Correspondencia[] {
-  return db().correspondencia
-    .filter(c => c.de_logia_id === logiaId || c.destinatarios_logia_ids.includes(logiaId))
-    .sort((a,b)=>b.fecha.localeCompare(a.fecha));
-}
-export function addCorrespondencia(c: Omit<Correspondencia,"id"|"fecha"|"leido_por">) {
-  db().correspondencia.push({ ...c, id: uid(), fecha: new Date().toISOString(), leido_por: [c.autor_id] }); persist();
-}
+// (Buzón → lib/data/buzon.ts · Correspondencia → lib/data/correspondencia.ts, ambos en Supabase + Storage)
 
 // ---------- Mensajería profesional ----------
 export function listMensajes(uid: string) {

@@ -79,7 +79,7 @@ export function seed(): DB {
   ];
 
   const correspondencia: Correspondencia[] = [
-    { id: "c1", de_logia_id: "l1", destinatarios_logia_ids: ["l2","l3"], asunto: "Invitación a tenida conjunta", cuerpo: "QQ.·.HH.·., se les convoca a la tenida blanca del próximo mes.", adjuntos: [{nombre:"convocatoria.pdf",tipo:"pdf"}], autor_id: "u_sec1", fecha: diasAtras(6), leido_por: ["u_sec1"] },
+    { id: "c1", de_logia_id: "l1", destinatarios_logia_ids: ["l2","l3"], asunto: "Invitación a tenida conjunta", cuerpo: "QQ.·.HH.·., se les convoca a la tenida blanca del próximo mes.", adjuntos: [{nombre:"convocatoria.pdf",tipo:"pdf",ruta:""}], autor_id: "u_sec1", fecha: diasAtras(6), leido_por: ["u_sec1"] },
   ];
 
   const mensajes: MensajeProfesional[] = [

@@ -102,7 +102,7 @@ export interface Correspondencia {
   destinatarios_logia_ids: string[];
   asunto: string;
   cuerpo: string;
-  adjuntos: { nombre: string; tipo: string }[];
+  adjuntos: { nombre: string; tipo: string; ruta: string }[];
   autor_id: string;
   fecha: string;
   leido_por: string[];
