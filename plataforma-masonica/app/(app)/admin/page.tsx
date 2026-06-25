@@ -8,6 +8,7 @@ import {
   adminSetRol, adminCambiarPalabra,
 } from "@/lib/data/identidad";
 import { getGenerales } from "@/lib/data/generales";
+import { createClient } from "@/lib/supabase/client";
 import { Grado, GRADO_LABEL, ROL_LABEL, Usuario, Logia, Generales } from "@/lib/types";
 import { fecha } from "@/lib/format";
 
@@ -100,7 +101,7 @@ function GestionUsuario({ u, onClose }: { u: Usuario; onClose: () => void }) {
   const [guardando, setGuardando] = useState(false);
   const [generales, setGenerales] = useState<Generales | null>(null);
 
-  useEffect(() => { getGenerales(u.id).then(setGenerales); }, [u.id]);
+  useEffect(() => { getGenerales(createClient(), u.id).then(setGenerales); }, [u.id]);
 
   async function accion(fn: () => Promise<void>) {
     setGuardando(true);

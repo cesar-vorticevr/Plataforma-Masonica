@@ -1,52 +1,12 @@
-"use client";
-import { useEffect, useState } from "react";
-import { useAuth } from "@/lib/auth";
-import { Card, PageTitle, Button, Input } from "@/components/ui";
-import { getGenerales, guardarGenerales } from "@/lib/data/generales";
-import { Generales } from "@/lib/types";
+import { createClient } from "@/lib/supabase/server";
+import { getGenerales } from "@/lib/data/generales";
+import GeneralesForm from "./GeneralesForm";
 
-export default function GeneralesPage() {
-  const { user } = useAuth();
+// Server Component: carga los generales del usuario en el servidor (RLS) y los pasa al formulario.
+export default async function GeneralesPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
-  return <GeneralesForm userId={user.id} />;
-}
-
-function GeneralesForm({ userId }: { userId: string }) {
-  const [g, setG] = useState<Generales>({ usuario_id: userId });
-  const [saved, setSaved] = useState(false);
-  const [guardando, setGuardando] = useState(false);
-
-  useEffect(() => {
-    getGenerales(userId).then((d) => { if (d) setG(d); });
-  }, [userId]);
-
-  const set = (k: keyof Generales, v: string) => { setG(s => ({ ...s, [k]: v })); setSaved(false); };
-
-  async function guardar(e: React.FormEvent) {
-    e.preventDefault();
-    setGuardando(true);
-    try { await guardarGenerales({ ...g, usuario_id: userId }); setSaved(true); }
-    finally { setGuardando(false); }
-  }
-
-  return (
-    <div>
-      <PageTitle title="Generales" subtitle="Datos de contacto. Solo los administradores y el secretario de tu logia pueden verlos." />
-      <Card>
-        <form onSubmit={guardar} className="grid sm:grid-cols-2 gap-4">
-          <Input label="Fecha de nacimiento" type="date" value={g.fecha_nacimiento ?? ""} onChange={e => set("fecha_nacimiento", e.target.value)} />
-          <Input label="Teléfono" value={g.telefono ?? ""} onChange={e => set("telefono", e.target.value)} />
-          <Input label="Dirección" value={g.direccion ?? ""} onChange={e => set("direccion", e.target.value)} className="sm:col-span-2" />
-          <Input label="Contacto de emergencia (nombre)" value={g.contacto_emergencia_nombre ?? ""} onChange={e => set("contacto_emergencia_nombre", e.target.value)} />
-          <Input label="Contacto de emergencia (teléfono)" value={g.contacto_emergencia_tel ?? ""} onChange={e => set("contacto_emergencia_tel", e.target.value)} />
-          <Input label="Tipo de sangre" value={g.tipo_sangre ?? ""} onChange={e => set("tipo_sangre", e.target.value)} />
-          <Input label="Notas / otros datos útiles" value={g.notas ?? ""} onChange={e => set("notas", e.target.value)} />
-          <div className="sm:col-span-2 flex items-center justify-end gap-3 pt-2 border-t">
-            {saved && <span className="text-emerald-600 text-sm">✓ Guardado</span>}
-            <Button type="submit" disabled={guardando}>Guardar generales</Button>
-          </div>
-        </form>
-      </Card>
-    </div>
-  );
+  const generales = await getGenerales(supabase, user.id);
+  return <GeneralesForm userId={user.id} inicial={generales} />;
 }
