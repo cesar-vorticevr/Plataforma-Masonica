@@ -36,17 +36,21 @@
 
 ## 3. Resto de módulos (uno por commit, mismo patrón page→isla)
 
-- [ ] 3.1 `dashboard`
-- [ ] 3.2 `generales`
-- [ ] 3.3 `eventos`
-- [ ] 3.4 `trabajos`
-- [ ] 3.5 `mensajes`
-- [ ] 3.6 `buzon`
-- [ ] 3.7 `correspondencia`
-- [ ] 3.8 `tenidas`
-- [ ] 3.9 `tesoreria`
-- [ ] 3.10 `cumplimientos`
-- [ ] 3.11 `admin`
+> Migrados en orden de dependencias (hojas → agregadores), no numérico, por los módulos de datos
+> compartidos. Todos los `lib/data/*` involucrados pasan a agnósticos (sb inyectado).
+> Gates estáticos (typecheck/lint/build) en verde; validación funcional en navegador pendiente.
+
+- [x] 3.1 `dashboard` (server component puro, sin isla)
+- [x] 3.2 `generales`
+- [x] 3.3 `eventos`
+- [x] 3.4 `trabajos`
+- [x] 3.5 `mensajes`
+- [x] 3.6 `buzon`
+- [x] 3.7 `correspondencia`
+- [x] 3.8 `tenidas`
+- [x] 3.9 `tesoreria`
+- [x] 3.10 `cumplimientos` (server component puro, sin isla)
+- [x] 3.11 `admin`
 
 ## 4. Salud y estadísticas (privacidad — al final)
 
