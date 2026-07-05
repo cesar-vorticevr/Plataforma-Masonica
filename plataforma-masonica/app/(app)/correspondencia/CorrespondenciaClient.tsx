@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 import { Card, PageTitle, Button, Input, Textarea, Badge, Empty, Modal } from "@/components/ui";
-import { enviar, urlDescarga } from "@/lib/data/correspondencia";
+import { enviar, urlDescarga, marcarLeida } from "@/lib/data/correspondencia";
 import { Correspondencia, Logia, Usuario } from "@/lib/types";
 import { fechaHora } from "@/lib/format";
 
@@ -25,6 +25,11 @@ function CorrespondenciaInner({ user, items, logias }: { user: Usuario; items: C
   async function descargar(ruta: string) {
     const url = await urlDescarga(createClient(), ruta);
     if (url) window.open(url, "_blank", "noopener");
+  }
+
+  async function marcar(id: string) {
+    await marcarLeida(createClient(), id);
+    router.refresh();
   }
 
   return (
@@ -54,6 +59,15 @@ function CorrespondenciaInner({ user, items, logias }: { user: Usuario; items: C
                       ))}
                     </div>
                   )}
+                  <div className="flex items-center gap-3 mt-3 pt-2 border-t text-xs">
+                    {enviado ? (
+                      <span className="text-slate-400">Leída por {c.leido_por.length} destinatario(s)</span>
+                    ) : c.leido_por.includes(user.id) ? (
+                      <span className="text-emerald-600">✓ Leída</span>
+                    ) : (
+                      <Button variant="ghost" className="text-xs" onClick={() => marcar(c.id)}>Marcar como leída</Button>
+                    )}
+                  </div>
                 </div>
               </Card>
             );

@@ -47,3 +47,8 @@ export async function urlDescarga(sb: SupabaseClient, ruta: string): Promise<str
   const { data } = await sb.storage.from(BUCKET).createSignedUrl(ruta, 3600);
   return data?.signedUrl ?? null;
 }
+
+// Marca una correspondencia como leída por el usuario actual (RPC: solo destinatario/emisor/global).
+export async function marcarLeida(sb: SupabaseClient, id: string): Promise<void> {
+  await sb.rpc("marcar_correspondencia_leida", { p_id: id });
+}
