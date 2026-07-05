@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Card, PageTitle, Button, SemaforoBadge, Badge, Empty } from "@/components/ui";
 import { PREGUNTAS, evaluar, SEMAFORO_TEXTO, mejora } from "@/lib/health";
-import { addEvaluacion, registrarConsentimiento, AVISO_PRIVACIDAD_VERSION } from "@/lib/data/salud";
+import { addEvaluacion, registrarConsentimiento, revocarConsentimiento, borrarMiSalud, AVISO_PRIVACIDAD_VERSION } from "@/lib/data/salud";
 import { EvaluacionSalud, CONDICION_LABEL, Semaforo, RespuestasSalud, RespuestaSalud } from "@/lib/types";
 import { fecha } from "@/lib/format";
 
@@ -131,7 +131,47 @@ export default function SaludClient({ userId, evals, consentido }:
           </div>
         </Card>
       )}
+
+      {consentido && tab === "panel" && (
+        <ArcoSalud evals={evals} onChange={() => router.refresh()} />
+      )}
     </div>
+  );
+}
+
+// Derechos ARCO (LFPDPPP): el hermano puede exportar sus datos de salud, revocar su consentimiento
+// (impide nuevas evaluaciones hasta volver a consentir) y borrar sus evaluaciones.
+function ArcoSalud({ evals, onChange }: { evals: EvaluacionSalud[]; onChange: () => void }) {
+  const [ocupado, setOcupado] = useState(false);
+
+  function exportar() {
+    const blob = new Blob([JSON.stringify(evals, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "mis-datos-salud.json"; a.click();
+    URL.revokeObjectURL(url);
+  }
+  async function revocar() {
+    if (!confirm("¿Revocar tu consentimiento? No podrás registrar nuevas evaluaciones hasta volver a aceptarlo.")) return;
+    setOcupado(true);
+    try { await revocarConsentimiento(createClient()); onChange(); } finally { setOcupado(false); }
+  }
+  async function borrar() {
+    if (!confirm("¿Borrar TODAS tus evaluaciones de salud? Esta acción no se puede deshacer.")) return;
+    setOcupado(true);
+    try { await borrarMiSalud(createClient()); onChange(); } finally { setOcupado(false); }
+  }
+
+  return (
+    <Card className="mt-6">
+      <h3 className="font-semibold text-navy mb-1 text-sm">Tus datos y privacidad (derechos ARCO)</h3>
+      <p className="text-xs text-slate-400 mb-3">Solo tú puedes ver, exportar o eliminar tu detalle de salud.</p>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="ghost" className="text-xs" onClick={exportar} disabled={evals.length === 0}>Exportar mis datos</Button>
+        <Button variant="ghost" className="text-xs" onClick={revocar} disabled={ocupado}>Revocar consentimiento</Button>
+        <Button variant="ghost" className="text-xs text-rose-600" onClick={borrar} disabled={ocupado || evals.length === 0}>Borrar mis evaluaciones</Button>
+      </div>
+    </Card>
   );
 }
 
