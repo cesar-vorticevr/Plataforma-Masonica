@@ -1,5 +1,8 @@
-## ADDED Requirements
+# admin-identidad Specification
 
+## Purpose
+TBD - created by archiving change fix-admin-carga-master. Update Purpose after archive.
+## Requirements
 ### Requirement: Selección de logia por defecto en el panel de administración
 
 El panel `/admin` SHALL determinar la logia inicialmente seleccionada según el rol del usuario:
@@ -29,8 +32,8 @@ por no tener una logia propia.
 
 ### Requirement: Estado vacío cuando no existen logias
 
-Cuando un administrador global abre `/admin` y todavía no existe ninguna logia en el sistema, el
-panel SHALL mostrar un estado vacío explícito en lugar de un estado de carga, de modo que el
+El panel SHALL mostrar un estado vacío explícito cuando un administrador global abre `/admin` y
+todavía no existe ninguna logia en el sistema, en lugar de un estado de carga, de modo que el
 administrador entienda que aún no hay logias creadas y no quede bloqueado.
 
 #### Scenario: Admin global sin ninguna logia creada
@@ -39,3 +42,4 @@ administrador entienda que aún no hay logias creadas y no quede bloqueado.
 - **WHEN** abre `/admin`
 - **THEN** el panel muestra un estado vacío que indica que aún no hay logias
 - **AND** no muestra un estado "Cargando…" indefinido
+
