@@ -28,6 +28,7 @@ export default function TesoreriaClient({ anio, miembros: miembrosRaw, capita, p
   }
   const recaudado = totalPagos * capita;
   const cumpl = totalEsperado ? Math.round((totalPagos / totalEsperado) * 100) : 0;
+  const adeudoTotal = (totalEsperado - totalPagos) * capita;
 
   const inicioVal = (m: MiembroTesoreria) => (m.fecha_inicio ?? m.fecha_registro).slice(0, 7);
 
@@ -43,8 +44,9 @@ export default function TesoreriaClient({ anio, miembros: miembrosRaw, capita, p
   return (
     <div>
       <PageTitle title="Tesorería" subtitle={`Control de cápitas ${anio} · solo cuenta hasta el mes actual y desde el inicio de cada hermano`} />
-      <div className="grid sm:grid-cols-3 gap-4 mb-6">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Stat label="Recaudado (al mes actual)" value={money(recaudado)} sub={`${totalPagos} de ${totalEsperado} cápitas`} />
+        <Stat label="Adeudo total (logia)" value={money(adeudoTotal)} sub={`${totalEsperado - totalPagos} cápita(s) pendiente(s)`} />
         <Stat label="Cumplimiento" value={`${cumpl}%`} sub="sobre lo que va del año" />
         <Card>
           <label className="label">Monto de cápita mensual</label>
@@ -63,6 +65,7 @@ export default function TesoreriaClient({ anio, miembros: miembrosRaw, capita, p
               <th className="p-2 text-center">Inicio</th>
               {MESES.map(m => <th key={m} className="p-2 text-center font-medium">{m}</th>)}
               <th className="p-2 text-center">%</th>
+              <th className="p-2 text-center">Adeudo</th>
             </tr>
           </thead>
           <tbody>
@@ -93,6 +96,7 @@ export default function TesoreriaClient({ anio, miembros: miembrosRaw, capita, p
                     );
                   })}
                   <td className="p-2 text-center font-semibold text-navy">{c.pct}%</td>
+                  <td className="p-2 text-center text-rose-600 whitespace-nowrap">{c.pendientes > 0 ? money(c.pendientes * capita) : "—"}</td>
                 </tr>
               );
             })}

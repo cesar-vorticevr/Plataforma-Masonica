@@ -42,8 +42,18 @@ seguridad (la propuesta `fix-aislamiento-logia-escrituras` ya endureció las esc
 - **Dependencia:** usa `estadisticas_capitas()` de `alcance-gran-secretario`; conviene después de ella
   y de `fix-aislamiento-logia-escrituras`.
 
+## Alcance dividido (decisión)
+
+Esta propuesta se acotó a las **correcciones de bajo riesgo y alto valor** + la vista agregada de
+asistencia. Se **difirió** al cambio `tesoreria-historico-capita-tendencias` (#6b) lo más invasivo:
+- El **histórico/periodicidad de cápita** (cambio de PK de `config_capitas` + migración de datos en
+  prod) y, por tanto, el **recaudado por monto vigente** (que depende de ese histórico).
+- Los **tableros de asistencia por mes/año y tendencias** (dataviz).
+
 ## Non-goals
 
+- No cambia el esquema de `config_capitas` (histórico/periodicidad) — va en #6b.
+- No implementa recaudado por monto histórico ni gráficas de tendencia — van en #6b.
 - No implementa cobranza en línea (fuera de alcance, §2.3).
 - No cambia las políticas de escritura/aislamiento (ya endurecidas).
 - No incluye exportación a Excel/PDF (Decisión abierta §11-#18; posible mejora).

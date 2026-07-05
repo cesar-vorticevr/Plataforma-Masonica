@@ -24,10 +24,15 @@ export default async function Cumplimientos() {
     listAsistencias(supabase),
   ]);
 
+  // Solo lo del propio hermano: la RLS puede devolver más filas si el que abre es admin
+  // (tesorero/secretario/master ven su logia). La vista personal cuenta únicamente lo suyo.
+  const misPagos = pagos.filter(p => p.usuario_id === user.id);
+  const misAsistencias = asistencias.filter(a => a.usuario_id === user.id);
+
   const rango = rangoCapitas(perfil.fecha_inicio, perfil.fecha_registro, anio);
-  const c = cumplimiento(rango, pagos);
+  const c = cumplimiento(rango, misPagos);
   const debe = c.pendientes * capita;
-  const presentes = asistencias.filter(a => a.presente).length;
+  const presentes = misAsistencias.filter(a => a.presente).length;
   const totalTenidas = tenidas.length;
   const asisPct = totalTenidas ? Math.round((presentes / totalTenidas) * 100) : 0;
 
@@ -49,7 +54,7 @@ export default async function Cumplimientos() {
               return <div key={m} className="rounded-lg p-2 text-center text-sm bg-slate-50 text-slate-300">
                 <div className="font-medium">{m}</div><div className="text-xs">—</div></div>;
             }
-            const ok = pagos.find(x => x.mes === mes)?.pagado;
+            const ok = misPagos.find(x => x.mes === mes)?.pagado;
             return (
               <div key={m} className={`rounded-lg p-2 text-center text-sm ${ok ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-600"}`}>
                 <div className="font-medium">{m}</div>
@@ -67,7 +72,7 @@ export default async function Cumplimientos() {
           <thead><tr className="text-left text-slate-500 border-b"><th className="py-2">Tenida</th><th>Fecha</th><th>Asistencia</th></tr></thead>
           <tbody>
             {tenidas.map(t => {
-              const presente = asistencias.find(a => a.tenida_id === t.id)?.presente ?? false;
+              const presente = misAsistencias.find(a => a.tenida_id === t.id)?.presente ?? false;
               return (
                 <tr key={t.id} className="border-b last:border-0">
                   <td className="py-2">{t.titulo}</td><td>{fecha(t.fecha)}</td>

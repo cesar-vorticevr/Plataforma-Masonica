@@ -5,6 +5,7 @@ import { Card, PageTitle, Stat, Empty, Select } from "@/components/ui";
 import { CONDICION_LABEL } from "@/lib/types";
 import { estadisticasSalud, EstadisticasSalud, Distribucion } from "@/lib/data/salud-estadisticas";
 import { CapitaLogiaAgg } from "@/lib/data/tesoreria";
+import { AsistenciaLogiaAgg } from "@/lib/data/tenidas";
 
 const mxn = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 });
 
@@ -20,8 +21,8 @@ export interface LogiaOpcion { id: string; nombre: string; numero: number }
 
 // Isla de estadísticas: recibe el agregado inicial del servidor; el admin global puede cambiar de
 // logia y la isla recalcula con el cliente de navegador (RPC agregado, nunca individual).
-export default function EstadisticasClient({ global, logias, initial, capitas = [] }:
-  { global: boolean; logias: LogiaOpcion[]; initial: EstadisticasSalud | null; capitas?: CapitaLogiaAgg[] }) {
+export default function EstadisticasClient({ global, logias, initial, capitas = [], asistencia = [] }:
+  { global: boolean; logias: LogiaOpcion[]; initial: EstadisticasSalud | null; capitas?: CapitaLogiaAgg[]; asistencia?: AsistenciaLogiaAgg[] }) {
   const [sel, setSel] = useState<string>("todas");
   const [data, setData] = useState<EstadisticasSalud | null | undefined>(initial);
 
@@ -133,6 +134,27 @@ export default function EstadisticasClient({ global, logias, initial, capitas = 
             </tbody>
           </table>
           <p className="p-3 text-xs text-slate-400">Cifras agregadas por logia. No se muestran pagos individuales.</p>
+        </Card>
+      )}
+
+      {global && asistencia.length > 0 && (
+        <Card className="mt-6 p-0 overflow-hidden">
+          <div className="p-4 border-b font-semibold text-navy">Asistencia por logia (agregado)</div>
+          <table className="w-full text-sm">
+            <thead><tr className="text-left text-slate-500 border-b">
+              <th className="p-3">Logia</th><th>Asistencia</th><th>Tenidas</th><th>Registros</th></tr></thead>
+            <tbody>
+              {asistencia.map(a => (
+                <tr key={a.logia_id} className="border-b last:border-0">
+                  <td className="p-3 text-slate-700">{a.nombre} <span className="text-slate-400">N.°{a.numero}</span></td>
+                  <td className="text-navy font-medium">{a.asistencia_pct}%</td>
+                  <td className="text-slate-600">{a.tenidas}</td>
+                  <td className="text-slate-500 text-xs">{a.presentes}/{a.registros}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="p-3 text-xs text-slate-400">Cifras agregadas por logia. No se muestran asistencias individuales.</p>
         </Card>
       )}
 
