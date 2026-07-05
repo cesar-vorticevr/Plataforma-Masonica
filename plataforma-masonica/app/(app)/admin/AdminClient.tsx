@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/client";
 import { Card, PageTitle, Button, Input, Select, Badge, Modal } from "@/components/ui";
 import {
   adminGetLogia, adminListUsuarios, adminValidar, adminSetEstado,
-  adminSetRol, adminCambiarPalabra,
+  adminSetRol, adminCambiarPalabra, adminCrearLogia,
+  adminDesignarSecretario, adminQuitarSecretario,
 } from "@/lib/data/identidad";
 import { getGenerales } from "@/lib/data/generales";
 import { Grado, GRADO_LABEL, ROL_LABEL, Usuario, Logia, Generales } from "@/lib/types";
@@ -24,7 +25,18 @@ export default function AdminClient({ global, defaultLogiaId, initialLogias, ini
     setLogia(lg); setUsuarios(us); setLogiaSel(id);
   }
 
-  if (!logia) return <div className="min-h-[40vh] grid place-items-center text-slate-400">Cargando…</div>;
+  if (!logia) {
+    // Admin global y aún no existe ninguna logia: estado vacío claro, no un "Cargando…" eterno.
+    if (global && initialLogias.length === 0) {
+      return (
+        <div>
+          <PageTitle title="Administración" subtitle="Gestión de logias, secretarios y hermanos." />
+          <Card><div className="p-6 text-center text-slate-400 text-sm">Aún no hay logias creadas.</div></Card>
+        </div>
+      );
+    }
+    return <div className="min-h-[40vh] grid place-items-center text-slate-400">Cargando…</div>;
+  }
 
   return (
     <div>
@@ -40,6 +52,7 @@ export default function AdminClient({ global, defaultLogiaId, initialLogias, ini
           </Card>
         )}
         <PalabraClave logia={logia} onSave={() => refrescar(logiaSel)} />
+        {global && <CrearLogia onCreated={id => refrescar(id)} />}
       </div>
 
       <Card className="p-0 overflow-hidden">
@@ -49,7 +62,7 @@ export default function AdminClient({ global, defaultLogiaId, initialLogias, ini
             <th className="p-3">Hermano</th><th>Rol / Grado</th><th>Estado</th><th>Registro</th><th></th></tr></thead>
           <tbody>
             {usuarios.map(u => (
-              <UsuarioRow key={u.id} u={u} onChange={() => refrescar(logiaSel)} />
+              <UsuarioRow key={u.id} u={u} global={global} onChange={() => refrescar(logiaSel)} />
             ))}
           </tbody>
         </table>
@@ -59,7 +72,7 @@ export default function AdminClient({ global, defaultLogiaId, initialLogias, ini
   );
 }
 
-function UsuarioRow({ u, onChange }: { u: Usuario; onChange: () => void }) {
+function UsuarioRow({ u, global, onChange }: { u: Usuario; global: boolean; onChange: () => void }) {
   const [open, setOpen] = useState(false);
   const estadoColor = u.estado === "validado" ? "green" : u.estado === "bloqueado" ? "red" : "yellow";
   return (
@@ -72,12 +85,12 @@ function UsuarioRow({ u, onChange }: { u: Usuario; onChange: () => void }) {
       <td><Badge color={estadoColor}>{u.estado}</Badge></td>
       <td className="text-slate-500 text-xs">{fecha(u.fecha_registro)}</td>
       <td className="text-right pr-3"><Button variant="ghost" className="text-xs" onClick={() => setOpen(true)}>Gestionar</Button></td>
-      {open && <td><GestionUsuario u={u} onClose={() => { setOpen(false); onChange(); }} /></td>}
+      {open && <td><GestionUsuario u={u} global={global} onClose={() => { setOpen(false); onChange(); }} /></td>}
     </tr>
   );
 }
 
-function GestionUsuario({ u, onClose }: { u: Usuario; onClose: () => void }) {
+function GestionUsuario({ u, global, onClose }: { u: Usuario; global: boolean; onClose: () => void }) {
   const [grado, setGrado] = useState<Grado>(u.grado ?? "aprendiz");
   const [guardando, setGuardando] = useState(false);
   const [generales, setGenerales] = useState<Generales | null>(null);
@@ -126,8 +139,73 @@ function GestionUsuario({ u, onClose }: { u: Usuario; onClose: () => void }) {
             {u.estado === "bloqueado" ? "Desbloquear" : "Bloquear"}
           </Button>
         </div>
+
+        {global && (
+          <div>
+            <label className="label">Secretario de la logia (solo Gran Secretaría)</label>
+            {u.rol === "secretario" ? (
+              <Button variant="ghost" disabled={guardando} className="w-full"
+                onClick={() => accion(sb => adminQuitarSecretario(sb, u.id))}>
+                Quitar secretario
+              </Button>
+            ) : (
+              <Button variant="ghost" disabled={guardando || u.estado !== "validado"} className="w-full"
+                onClick={() => accion(sb => adminDesignarSecretario(sb, u.id))}>
+                Designar secretario
+              </Button>
+            )}
+            <p className="text-xs text-slate-400 mt-1">
+              {u.estado !== "validado" && u.rol !== "secretario"
+                ? "Primero valida al hermano para poder designarlo."
+                : "Cada logia tiene un solo secretario; al designar, el anterior vuelve a hermano."}
+            </p>
+          </div>
+        )}
       </div>
     </Modal>
+  );
+}
+
+function CrearLogia({ onCreated }: { onCreated: (id: string) => void }) {
+  const [nombre, setNombre] = useState("");
+  const [numero, setNumero] = useState("");
+  const [oriente, setOriente] = useState("");
+  const [clave, setClave] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState("");
+
+  const numeroOk = /^\d+$/.test(numero.trim());
+  const valido = !!nombre.trim() && !!oriente.trim() && !!clave.trim() && numeroOk;
+
+  async function crear() {
+    if (!valido) { setError("Completa nombre, número, oriente y palabra clave."); return; }
+    setGuardando(true); setError("");
+    try {
+      const id = await adminCrearLogia(createClient(), {
+        nombre: nombre.trim(), numero: parseInt(numero, 10),
+        oriente: oriente.trim(), clave: clave.trim(),
+      });
+      if (!id) { setError("No se pudo crear la logia. Verifica tus permisos."); return; }
+      setNombre(""); setNumero(""); setOriente(""); setClave("");
+      onCreated(id);
+    } finally { setGuardando(false); }
+  }
+
+  return (
+    <Card>
+      <h3 className="font-semibold text-navy mb-2 text-sm">Crear logia</h3>
+      <div className="space-y-2">
+        <Input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Nombre" />
+        <div className="flex gap-2">
+          <Input value={numero} onChange={e => setNumero(e.target.value)} placeholder="N.°" inputMode="numeric" />
+          <Input value={oriente} onChange={e => setOriente(e.target.value)} placeholder="Oriente (ciudad)" />
+        </div>
+        <Input value={clave} onChange={e => setClave(e.target.value)} placeholder="Palabra clave" />
+        <Button onClick={crear} disabled={guardando || !valido} className="w-full">Crear logia</Button>
+        {error && <p className="text-rose-600 text-sm">{error}</p>}
+      </div>
+      <p className="text-xs text-slate-400 mt-1">Habilita el registro de hermanos en la nueva logia.</p>
+    </Card>
   );
 }
 
