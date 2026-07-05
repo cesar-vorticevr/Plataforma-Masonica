@@ -33,4 +33,5 @@ Puntos rápidos (el detalle está en `AGENTS.md`):
   cifradas**. Cumplimiento LFPDPPP 2025. Ver `AGENTS.md` §7.
 - El dominio se nombra en **español**; mantén `lib/types.ts` y `supabase/schema.sql` sincronizados.
 
-Antes de cerrar trabajo: `npm run typecheck` y `npm run lint` (dentro de `plataforma-masonica/`).
+Antes de cerrar trabajo: `npm run typecheck`, `npm run lint` y `npm run check:encoding`
+(dentro de `plataforma-masonica/`).

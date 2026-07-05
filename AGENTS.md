@@ -88,8 +88,9 @@ plataforma-masonica/
 cd plataforma-masonica
 npm install
 npm run dev        # http://localhost:3000
-npm run typecheck  # tsc --noEmit (correr antes de proponer cierre de tareas)
+npm run typecheck       # tsc --noEmit (correr antes de proponer cierre de tareas)
 npm run lint
+npm run check:encoding  # detecta mojibake / texto mal codificado en el fuente
 npm run build
 ```
 
@@ -226,7 +227,8 @@ Reglas que todo cambio debe respetar:
   `tailwind.config.ts`). Diseño **responsive** desde el inicio. Fechas y formato **MX**, español.
 - **UI:** sigue el sistema de diseño (§8.1). Reutiliza los primitivos de `components/ui`; no
   recrees estilos con clases sueltas ni hardcodees colores hex cuando exista un token.
-- **Antes de cerrar trabajo:** `npm run typecheck` y `npm run lint` deben pasar.
+- **Antes de cerrar trabajo:** `npm run typecheck`, `npm run lint` y `npm run check:encoding`
+  (detecta mojibake / texto mal codificado) deben pasar.
 
 ### 8.1 Sistema de diseño (DESIGN.md)
 

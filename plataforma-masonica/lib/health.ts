@@ -2,7 +2,7 @@ import { EvaluacionSalud, RespuestasSalud, Semaforo } from "./types";
 
 // ====================================================================
 // Cuestionario de salud (base: Proyecto Salud Integral)
-// LÃGICA ORIENTATIVA - debe ser validada por un mÃ©dico. No es diagnÃ³stico.
+// LÓGICA ORIENTATIVA - debe ser validada por un médico. No es diagnóstico.
 // ====================================================================
 
 export type TipoPregunta = "si_no" | "numero" | "opciones";
@@ -12,48 +12,48 @@ export interface Pregunta {
   texto: string;
   tipo: TipoPregunta;
   opciones?: { label: string; valor: number }[];
-  alarma?: boolean; // sÃ­ntoma de alarma oncolÃ³gico -> rojo automÃ¡tico
+  alarma?: boolean; // síntoma de alarma oncológico -> rojo automático
 }
 
 export const PREGUNTAS: Pregunta[] = [
-  // MetabÃ³lico
-  { id: "edad", bloque: "metabolico", texto: "Â¿CuÃ¡l es tu rango de edad?", tipo: "opciones",
+  // Metabólico
+  { id: "edad", bloque: "metabolico", texto: "¿Cuál es tu rango de edad?", tipo: "opciones",
     opciones: [
       { label: "Menos de 45", valor: 0 },
       { label: "45 a 54", valor: 2 },
       { label: "55 a 64", valor: 3 },
-      { label: "65 o mÃ¡s", valor: 4 },
+      { label: "65 o más", valor: 4 },
     ] },
-  { id: "imc", bloque: "metabolico", texto: "Â¿CÃ³mo es tu peso corporal (IMC)?", tipo: "opciones",
+  { id: "imc", bloque: "metabolico", texto: "¿Cómo es tu peso corporal (IMC)?", tipo: "opciones",
     opciones: [
       { label: "Normal", valor: 0 },
       { label: "Sobrepeso (IMC 25-30)", valor: 1 },
       { label: "Obesidad (IMC > 30)", valor: 3 },
     ] },
-  { id: "cintura", bloque: "metabolico", texto: "Â¿Tu perÃ­metro de cintura es elevado? (hombre >90cm)", tipo: "si_no" },
-  { id: "actividad", bloque: "metabolico", texto: "Â¿Llevas un estilo de vida sedentario (poca actividad fÃ­sica)?", tipo: "si_no" },
-  { id: "medicacion_presion", bloque: "metabolico", texto: "Â¿Tomas medicaciÃ³n para la presiÃ³n arterial?", tipo: "si_no" },
-  { id: "glucosa_elevada", bloque: "metabolico", texto: "Â¿Alguna vez te han detectado glucosa elevada?", tipo: "si_no" },
-  { id: "antecedente_diabetes", bloque: "metabolico", texto: "Â¿Tienes antecedentes familiares de diabetes?", tipo: "si_no" },
+  { id: "cintura", bloque: "metabolico", texto: "¿Tu perímetro de cintura es elevado? (hombre >90cm)", tipo: "si_no" },
+  { id: "actividad", bloque: "metabolico", texto: "¿Llevas un estilo de vida sedentario (poca actividad física)?", tipo: "si_no" },
+  { id: "medicacion_presion", bloque: "metabolico", texto: "¿Tomas medicación para la presión arterial?", tipo: "si_no" },
+  { id: "glucosa_elevada", bloque: "metabolico", texto: "¿Alguna vez te han detectado glucosa elevada?", tipo: "si_no" },
+  { id: "antecedente_diabetes", bloque: "metabolico", texto: "¿Tienes antecedentes familiares de diabetes?", tipo: "si_no" },
 
-  // HÃ¡bitos
-  { id: "tabaco", bloque: "habitos", texto: "Â¿Fumas actualmente o has fumado regularmente?", tipo: "si_no" },
-  { id: "alcohol", bloque: "habitos", texto: "Â¿Consumes bebidas alcohÃ³licas con frecuencia?", tipo: "si_no" },
-  { id: "dieta", bloque: "habitos", texto: "Â¿Tu dieta es baja en frutas y verduras?", tipo: "si_no" },
+  // Hábitos
+  { id: "tabaco", bloque: "habitos", texto: "¿Fumas actualmente o has fumado regularmente?", tipo: "si_no" },
+  { id: "alcohol", bloque: "habitos", texto: "¿Consumes bebidas alcohólicas con frecuencia?", tipo: "si_no" },
+  { id: "dieta", bloque: "habitos", texto: "¿Tu dieta es baja en frutas y verduras?", tipo: "si_no" },
 
-  // OncolÃ³gico
-  { id: "fam_cancer", bloque: "oncologico", texto: "Â¿Tienes familiares directos diagnosticados con cÃ¡ncer?", tipo: "si_no" },
-  { id: "fam_cancer_temprano", bloque: "oncologico", texto: "Â¿AlgÃºn familiar desarrollÃ³ cÃ¡ncer (mama, ovario, colon o prÃ³stata) antes de los 50 aÃ±os?", tipo: "si_no" },
-  { id: "exposicion", bloque: "oncologico", texto: "Â¿ExposiciÃ³n frecuente al sol sin protecciÃ³n o a quÃ­micos tÃ³xicos en el trabajo?", tipo: "si_no" },
-  { id: "perdida_peso", bloque: "oncologico", texto: "Â¿PÃ©rdida de peso inexplicable (mÃ¡s de 4.5 kg) en los Ãºltimos meses?", tipo: "si_no", alarma: true },
-  { id: "fatiga", bloque: "oncologico", texto: "Â¿Fatiga extrema y constante que no mejora con el descanso?", tipo: "si_no", alarma: true },
-  { id: "dolor_fiebre", bloque: "oncologico", texto: "Â¿Dolor persistente o fiebre recurrente sin causa aparente?", tipo: "si_no", alarma: true },
-  { id: "bultos", bloque: "oncologico", texto: "Â¿Bultos nuevos o engrosamiento de la piel en alguna parte del cuerpo?", tipo: "si_no", alarma: true },
-  { id: "lunar", bloque: "oncologico", texto: "Â¿Cambio en tamaÃ±o, forma o color de un lunar o mancha?", tipo: "si_no", alarma: true },
-  { id: "tos", bloque: "oncologico", texto: "Â¿Tos persistente, dificultad para respirar o cambios en la voz por mÃ¡s de 2 semanas?", tipo: "si_no", alarma: true },
-  { id: "habitos_intestinales", bloque: "oncologico", texto: "Â¿Cambios inusuales en hÃ¡bitos intestinales o urinarios (sangre, dolor, etc.)?", tipo: "si_no", alarma: true },
+  // Oncológico
+  { id: "fam_cancer", bloque: "oncologico", texto: "¿Tienes familiares directos diagnosticados con cáncer?", tipo: "si_no" },
+  { id: "fam_cancer_temprano", bloque: "oncologico", texto: "¿Algún familiar desarrolló cáncer (mama, ovario, colon o próstata) antes de los 50 años?", tipo: "si_no" },
+  { id: "exposicion", bloque: "oncologico", texto: "¿Exposición frecuente al sol sin protección o a químicos tóxicos en el trabajo?", tipo: "si_no" },
+  { id: "perdida_peso", bloque: "oncologico", texto: "¿Pérdida de peso inexplicable (más de 4.5 kg) en los últimos meses?", tipo: "si_no", alarma: true },
+  { id: "fatiga", bloque: "oncologico", texto: "¿Fatiga extrema y constante que no mejora con el descanso?", tipo: "si_no", alarma: true },
+  { id: "dolor_fiebre", bloque: "oncologico", texto: "¿Dolor persistente o fiebre recurrente sin causa aparente?", tipo: "si_no", alarma: true },
+  { id: "bultos", bloque: "oncologico", texto: "¿Bultos nuevos o engrosamiento de la piel en alguna parte del cuerpo?", tipo: "si_no", alarma: true },
+  { id: "lunar", bloque: "oncologico", texto: "¿Cambio en tamaño, forma o color de un lunar o mancha?", tipo: "si_no", alarma: true },
+  { id: "tos", bloque: "oncologico", texto: "¿Tos persistente, dificultad para respirar o cambios en la voz por más de 2 semanas?", tipo: "si_no", alarma: true },
+  { id: "habitos_intestinales", bloque: "oncologico", texto: "¿Cambios inusuales en hábitos intestinales o urinarios (sangre, dolor, etc.)?", tipo: "si_no", alarma: true },
 
-  // Padecimientos diagnosticados (enfermedades bÃ¡sicas)
+  // Padecimientos diagnosticados (enfermedades básicas)
   { id: "diabetes", bloque: "condiciones", texto: "¿Te han diagnosticado diabetes?", tipo: "si_no" },
   { id: "hipertension", bloque: "condiciones", texto: "¿Te han diagnosticado hipertensión (presión alta)?", tipo: "si_no" },
   { id: "colesterol", bloque: "condiciones", texto: "¿Te han diagnosticado colesterol o triglicéridos altos?", tipo: "si_no" },
@@ -97,7 +97,7 @@ export function evaluar(resp: RespuestasSalud): ResultadoEvaluacion {
     }
   }
 
-  // Etiquetas de hÃ¡bitos / riesgo
+  // Etiquetas de hábitos / riesgo
   if (resp.tabaco === true || resp.tabaco === "si") etiquetas.push("tabaquismo");
   if (resp.alcohol === true || resp.alcohol === "si") etiquetas.push("alcohol");
   if (resp.actividad === true || resp.actividad === "si") etiquetas.push("sedentarismo");
@@ -131,9 +131,9 @@ export function evaluar(resp: RespuestasSalud): ResultadoEvaluacion {
 }
 
 export const SEMAFORO_TEXTO: Record<Semaforo, { label: string; mensaje: string }> = {
-  verde: { label: "Riesgo bajo", mensaje: "MantÃ©n tus hÃ¡bitos saludables y repite la evaluaciÃ³n periÃ³dicamente." },
-  amarillo: { label: "Riesgo moderado", mensaje: "Conviene mejorar hÃ¡bitos y considerar una valoraciÃ³n mÃ©dica preventiva." },
-  rojo: { label: "Riesgo alto", mensaje: "Se recomienda acudir a valoraciÃ³n mÃ©dica. Esto no es un diagnÃ³stico." },
+  verde: { label: "Riesgo bajo", mensaje: "Mantén tus hábitos saludables y repite la evaluación periódicamente." },
+  amarillo: { label: "Riesgo moderado", mensaje: "Conviene mejorar hábitos y considerar una valoración médica preventiva." },
+  rojo: { label: "Riesgo alto", mensaje: "Se recomienda acudir a valoración médica. Esto no es un diagnóstico." },
 };
 
 export function mejora(actual: EvaluacionSalud, previa?: EvaluacionSalud) {
