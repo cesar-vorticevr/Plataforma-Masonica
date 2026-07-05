@@ -6,7 +6,7 @@ import { Rol } from "../types";
 export interface MiembroTesoreria {
   id: string; nombre: string; rol: Rol; fecha_registro: string; fecha_inicio: string | null;
 }
-export interface PagoRow { usuario_id: string; mes: number; pagado: boolean }
+export interface PagoRow { usuario_id: string; mes: number; pagado: boolean; monto: number }
 
 export async function listMiembros(sb: SupabaseClient, logiaId: string): Promise<MiembroTesoreria[]> {
   const { data } = await sb
@@ -20,13 +20,20 @@ export async function getCapita(sb: SupabaseClient, logiaId: string): Promise<nu
   return (data?.monto as number | undefined) ?? 0;
 }
 
+export interface CapitaConfig { monto: number; periodicidad: string }
+
+export async function getCapitaConfig(sb: SupabaseClient, logiaId: string): Promise<CapitaConfig> {
+  const { data } = await sb.from("config_capitas").select("monto,periodicidad").eq("logia_id", logiaId).maybeSingle();
+  return { monto: (data?.monto as number | undefined) ?? 0, periodicidad: (data?.periodicidad as string | undefined) ?? "mensual" };
+}
+
 export async function setCapita(sb: SupabaseClient, logiaId: string, monto: number): Promise<void> {
   await sb.from("config_capitas").upsert({ logia_id: logiaId, monto, periodicidad: "mensual" }, { onConflict: "logia_id" });
 }
 
 // Pagos de la logia para un año. La RLS de `pagos` ya acota a la logia del tesorero/secretario.
 export async function listPagos(sb: SupabaseClient, anio: number): Promise<PagoRow[]> {
-  const { data } = await sb.from("pagos").select("usuario_id,mes,pagado").eq("anio", anio);
+  const { data } = await sb.from("pagos").select("usuario_id,mes,pagado,monto").eq("anio", anio);
   return (data ?? []) as PagoRow[];
 }
 

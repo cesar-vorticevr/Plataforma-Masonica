@@ -1,48 +1,51 @@
 ## Context
 
-`config_capitas(logia_id PK, monto, periodicidad)` — un monto por logia; `setCapita` hace
-`upsert onConflict logia_id`. El recaudado en `TesoreriaClient` usa la cápita actual para todos los
-meses. Tenidas muestra solo % acumulado. Hay datos en producción, así que evolucionar el esquema exige
-backfill sin alterar cifras históricas.
+Descubrimiento clave al implementar: **`pagos.monto` ya guarda el importe de cada pago** (`setPago`
+registra la cápita vigente al marcar). Por tanto el recaudado histórico se corrige **sumando
+`pagos.monto`**, sin cambiar el esquema. `TesoreriaClient` hoy calcula `recaudado = nº pagos × cápita
+actual` (bug). `config_capitas` conserva la cápita actual y su `periodicidad` (hoy fija "mensual").
+Local tiene 0 filas en `config_capitas`/`pagos` (nada que migrar).
 
 ## Goals / Non-Goals
 
-**Goals:** tarifas de cápita con vigencia; recaudado por periodo; asistencia por mes/año + tendencia.
-**Non-Goals:** cobranza en línea; exportación; periodicidad por grado.
+**Goals:** recaudado correcto por importe de cada pago; exponer periodicidad; asistencia por mes/año +
+tendencia. **Non-Goals:** tabla de tarifas con vigencia (innecesaria dado `pagos.monto`); cobranza en
+línea; exportación.
 
 ## Decisions
 
-### 1. Tarifas con vigencia
-Opción A (elegida): nueva tabla `capita_tarifas(id, logia_id, monto, vigente_desde date, periodicidad)`
-con índice `(logia_id, vigente_desde)`. `getCapita(logia, fecha)` = tarifa con mayor `vigente_desde <=
-fecha`. Migración: crear tabla, backfill una fila por logia desde `config_capitas` con
-`vigente_desde` = fecha de inicio/creación; mantener `config_capitas` como vista o migrar sus usos.
+### 1. Recaudado desde `pagos.monto` (sin migración)
+- `listPagos` incluye `monto`; `PagoRow` gana `monto`.
+- `TesoreriaClient`: `recaudado = Σ pagos.monto (pagado)` en vez de `Σ pagados × cápita actual`.
+- El adeudo por hermano/logia sigue usando la cápita **actual** × meses pendientes (aproximación
+  aceptable; precisión histórica del adeudo de meses viejos impagos se puede refinar luego con una
+  tabla de tarifas si algún día cambian los montos y se requiere).
 
-Opción B (descartada): guardar el monto en cada `pago`. Más simple para recaudado histórico pero
-denormaliza y no modela la tarifa; se descarta por claridad de auditoría.
+*Alternativa descartada:* tabla `capita_tarifas` con vigencia + backfill (cambio de PK). Se descarta:
+`pagos.monto` ya cubre el recaudado; el beneficio restante (adeudo histórico exacto) no justifica la
+migración de datos en prod ahora.
 
-### 2. Recaudado por periodo
-Calcular recaudado sumando, por cada mes pagado, la tarifa vigente de ese mes. Encapsular en función
-de datos con pruebas; verificar que el recaudado histórico no cambia tras el backfill.
+### 2. Periodicidad visible
+- Exponer `config_capitas.periodicidad` en la vista de tesorería (lectura; edición futura).
 
 ### 3. Asistencia por mes/año + tendencia
-`estadisticas_asistencia_periodo()` o consultas agregadas por mes/año; serie temporal en
-`TenidasClient` con gráficas según skill `dataviz` (tokens de DESIGN.md).
+- Agregar en `TenidasClient` un desglose por mes (del año en curso) y la tendencia de participación
+  (serie temporal), a partir de `tenidas.fecha` y `asistencias`. Gráficas simples conformes a
+  `DESIGN.md` (barras/línea con tokens existentes; ver skill `dataviz`).
 
 ## Risks / Trade-offs
 
-- [Backfill en prod] → probar en local con copia; verificar cifras antes y después; rollback claro.
-- [Migrar usos de `config_capitas`] → mantener compatibilidad (vista) durante la transición.
+- [Adeudo histórico aproximado] → usa cápita actual; documentado. Bajo impacto en sistema joven.
+- [Sin migración] → menor riesgo; no toca datos productivos.
 
 ## Migration Plan
 
-1. Migración: `capita_tarifas` + backfill + ajustes de `getCapita`/`setCapita`.
-2. App: recaudado por periodo + tableros de asistencia por periodo/tendencia.
-3. Local → verificar cifras → prod. Rollback: revertir a `config_capitas` (datos conservados).
+Sin migración de esquema. Cambios de app: `lib/data/tesoreria.ts` (listPagos+monto),
+`TesoreriaClient` (recaudado + periodicidad), `TenidasClient` (tableros por mes/tendencia).
+Local → prod es solo deploy de código (las migraciones previas ya están). Rollback = revertir commit.
 
-**Seguridad:** sin cambios de RLS relevantes (tesorería ya aislada por logia). **dataviz/DESIGN.md:**
-gráficas conformes.
+**DESIGN.md/dataviz:** gráficas conformes a tokens. **Seguridad:** sin cambios de RLS.
 
 ## Open Questions
 
-- ¿`config_capitas` se convierte en vista de compatibilidad o se migran todos los usos de golpe?
+Ninguna (la tabla de tarifas queda como posible refinamiento futuro, no requerido).

@@ -11,8 +11,8 @@ import { money } from "@/lib/format";
 
 // Isla de tesorería: recibe miembros/cápita/pagos del servidor; edición de monto, registro de
 // pagos e inicio de cápita con el cliente de navegador; router.refresh() tras cada cambio.
-export default function TesoreriaClient({ anio, miembros: miembrosRaw, capita, pagos }:
-  { anio: number; miembros: MiembroTesoreria[]; capita: number; pagos: PagoRow[] }) {
+export default function TesoreriaClient({ anio, miembros: miembrosRaw, capita, periodicidad = "mensual", pagos }:
+  { anio: number; miembros: MiembroTesoreria[]; capita: number; periodicidad?: string; pagos: PagoRow[] }) {
   const { user } = useAuth();
   const router = useRouter();
   const [montoEdit, setMontoEdit] = useState(String(capita));
@@ -26,7 +26,9 @@ export default function TesoreriaClient({ anio, miembros: miembrosRaw, capita, p
     const c = cumplimiento(rangoCapitas(m.fecha_inicio, m.fecha_registro, anio), pagosDe(m.id));
     totalPagos += c.pagados; totalEsperado += c.count;
   }
-  const recaudado = totalPagos * capita;
+  // Recaudado por el importe registrado en cada pago (pagos.monto), no por la cápita actual:
+  // así los meses con montos distintos se reflejan correctamente.
+  const recaudado = pagos.reduce((s, p) => s + (p.pagado ? Number(p.monto) || 0 : 0), 0);
   const cumpl = totalEsperado ? Math.round((totalPagos / totalEsperado) * 100) : 0;
   const adeudoTotal = (totalEsperado - totalPagos) * capita;
 
@@ -49,11 +51,12 @@ export default function TesoreriaClient({ anio, miembros: miembrosRaw, capita, p
         <Stat label="Adeudo total (logia)" value={money(adeudoTotal)} sub={`${totalEsperado - totalPagos} cápita(s) pendiente(s)`} />
         <Stat label="Cumplimiento" value={`${cumpl}%`} sub="sobre lo que va del año" />
         <Card>
-          <label className="label">Monto de cápita mensual</label>
+          <label className="label">Monto de cápita ({periodicidad})</label>
           <div className="flex gap-2">
             <Input value={montoEdit} onChange={e => setMontoEdit(e.target.value)} type="number" />
             <Button onClick={guardarMonto}>Guardar</Button>
           </div>
+          <p className="text-xs text-slate-400 mt-1">Periodicidad: {periodicidad}</p>
         </Card>
       </div>
 

@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 import { Card, PageTitle, Stat, Button, Input, Empty } from "@/components/ui";
 import { addTenida, setAsistencia, MiembroTenida, AsistenciaRow } from "@/lib/data/tenidas";
-import { Tenida } from "@/lib/types";
+import { Tenida, MESES } from "@/lib/types";
 import { fecha } from "@/lib/format";
 
 // Isla de tenidas: recibe tenidas/miembros/asistencias del servidor; alta de tenida y registro de
@@ -26,6 +26,16 @@ export default function TenidasClient({ tenidas, miembros, asistencias }:
   };
   const pctLogia = miembros.length ? Math.round(miembros.reduce((s, h) => s + pctDe(h.id), 0) / miembros.length) : 0;
   const tenida = tenidas.find(t => t.id === sel);
+
+  // Tendencia de asistencia por mes del año en curso (presentes / registros de ese mes).
+  const anioActual = new Date().getFullYear();
+  const tenidasAnio = tenidas.filter(t => new Date(t.fecha).getFullYear() === anioActual);
+  const porMes = MESES.map((m, i) => {
+    const ids = new Set(tenidasAnio.filter(t => new Date(t.fecha).getMonth() === i).map(t => t.id));
+    const regs = asistencias.filter(a => ids.has(a.tenida_id));
+    const presentes = regs.filter(a => a.presente).length;
+    return { mes: m, tenidas: ids.size, pct: regs.length ? Math.round((presentes / regs.length) * 100) : 0 };
+  });
 
   async function crear() {
     if (nueva.titulo && nueva.fecha) {
@@ -106,6 +116,19 @@ export default function TenidasClient({ tenidas, miembros, asistencias }:
             );
           })}
         </div>
+      </Card>
+
+      <Card className="mt-6">
+        <h3 className="font-semibold text-navy mb-3">Tendencia de asistencia por mes · {anioActual}</h3>
+        <div className="flex items-end gap-1 h-32">
+          {porMes.map(x => (
+            <div key={x.mes} className="flex-1 flex flex-col items-center justify-end gap-1" title={`${x.tenidas} tenida(s) · ${x.pct}%`}>
+              <div className="w-full rounded-t bg-royal/80" style={{ height: `${x.pct}%`, minHeight: x.tenidas ? 2 : 0 }} />
+              <span className="text-[10px] text-slate-400">{x.mes}</span>
+            </div>
+          ))}
+        </div>
+        <p className="text-xs text-slate-400 mt-2">Porcentaje de asistencia por mes (sobre los registros de las tenidas del mes). Los meses sin tenidas aparecen vacíos.</p>
       </Card>
     </div>
   );

@@ -1,25 +1,23 @@
-## 1. Esquema: tarifas de cápita con vigencia
+## 1. Recaudado por monto del pago (sin migración)
 
-- [ ] 1.1 Migración: tabla `capita_tarifas(id, logia_id, monto, vigente_desde, periodicidad)` con índice `(logia_id, vigente_desde)`; RLS acotada por logia (espejo de config_capitas).
-- [ ] 1.2 Backfill: una tarifa por logia desde `config_capitas` con `vigente_desde` inicial; plan de compatibilidad para `config_capitas` (vista o migración de usos).
-- [ ] 1.3 Ajustar `getCapita(logia, fecha)` (tarifa vigente) y `setCapita` (alta de tarifa).
-- [ ] 1.4 Aplicar en local; verificar que el recaudado histórico NO cambia con el backfill.
+- [x] 1.1 `lib/data/tesoreria.ts`: `listPagos` incluye `monto`; `PagoRow` gana `monto`.
+- [x] 1.2 `TesoreriaClient`: recaudado = Σ `pagos.monto` (pagado), en vez de `nº pagos × cápita actual`.
+- [x] 1.3 Exponer `config_capitas.periodicidad` en la vista de tesorería (`getCapitaConfig` + UI).
 
-## 2. Recaudado por periodo
+## 2. Asistencia por mes/año y tendencia
 
-- [ ] 2.1 Calcular recaudado sumando la tarifa vigente de cada mes pagado; corregir `TesoreriaClient`.
+- [x] 2.1 `TenidasClient`: tendencia de asistencia por mes (año en curso) a partir de `tenidas.fecha` + `asistencias`, con gráfica de barras conforme a `DESIGN.md`.
 
-## 3. Asistencia por mes/año y tendencia
+## 3. Verificación
 
-- [ ] 3.1 Agregación de asistencia por mes/año (por hermano y por logia) y serie temporal.
-- [ ] 3.2 Tableros/gráficas en `TenidasClient` según skill `dataviz` (tokens de DESIGN.md).
+- [x] 3.1 Con pagos de montos distintos (100 + 150), el recaudado muestra $250.00 (suma `pagos.monto`, no la cápita actual). Verificado E2E como tesorero.
+- [x] 3.2 La periodicidad se muestra en tesorería. (verificado)
+- [x] 3.3 Tendencia de asistencia por mes presente; `/tesoreria` y `/tenidas` = 200.
 
-## 4. Verificación
+## 4. Calidad
 
-- [ ] 4.1 Con cambio de tarifa a mitad de año, el recaudado usa el monto vigente por periodo.
-- [ ] 4.2 Backfill: cifras históricas intactas.
-- [ ] 4.3 Tableros de asistencia por mes/año y tendencia correctos.
+- [x] 4.1 `npm run typecheck` y `npm run lint` en verde.
 
-## 5. Calidad
-
-- [ ] 5.1 `npm run typecheck` y `npm run lint` en verde.
+<!-- NOTA: sin migración de esquema. La tabla de tarifas con vigencia se descartó (pagos.monto ya
+     cubre el recaudado histórico); el adeudo histórico exacto de meses viejos impagos queda como
+     posible refinamiento futuro. -->
