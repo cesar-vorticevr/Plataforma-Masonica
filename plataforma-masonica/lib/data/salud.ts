@@ -36,6 +36,17 @@ export async function tieneConsentimiento(sb: SupabaseClient, usuarioId: string,
   return (data?.length ?? 0) > 0;
 }
 
-export async function registrarConsentimiento(sb: SupabaseClient, usuarioId: string, version: string): Promise<void> {
-  await sb.from("consentimientos").insert({ usuario_id: usuarioId, version_aviso: version });
+export async function registrarConsentimiento(sb: SupabaseClient, _usuarioId: string, version: string): Promise<void> {
+  // Se registra por RPC (server-side) para capturar la ip y no confiar el usuario/ip al cliente.
+  await sb.rpc("registrar_consentimiento", { p_version: version });
+}
+
+// ARCO: revoca el consentimiento (impide nuevas evaluaciones hasta volver a consentir).
+export async function revocarConsentimiento(sb: SupabaseClient): Promise<void> {
+  await sb.rpc("revocar_consentimiento");
+}
+
+// ARCO (cancelación): borra todas las evaluaciones de salud del propio hermano.
+export async function borrarMiSalud(sb: SupabaseClient): Promise<void> {
+  await sb.rpc("borrar_mi_salud");
 }
