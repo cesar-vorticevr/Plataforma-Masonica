@@ -1,26 +1,27 @@
-## 1. Correcciones de cálculo
+## 1. Corrección: /cumplimientos
 
-- [ ] 1.1 `/cumplimientos`: calcular sobre datos del propio `auth.uid()` (filtrar explícitamente) o mostrar vista distinta si el que abre es admin; evitar el doble conteo (asistencia ≤ 100%).
-- [ ] 1.2 Recaudado por monto vigente del periodo (no el actual).
+- [x] 1.1 `/cumplimientos`: calcula sobre los pagos y asistencias del propio `user.id` (filtrado explícito `misPagos`/`misAsistencias`), evitando el doble conteo cuando un rol admin abre la vista.
 
-## 2. Esquema: periodicidad/histórico de cápita
+## 2. Tesorería: indicadores de adeudo
 
-- [ ] 2.1 Migración: evolucionar `config_capitas` a tarifas con `vigente_desde` (y periodicidad), permitiendo varias filas por logia; backfill de la tarifa actual como vigencia inicial (usar skill supabase-postgres-best-practices).
-- [ ] 2.2 Aplicar en local sin borrar datos; verificar que el recaudado histórico no cambia con el backfill.
+- [x] 2.1 Tesorería: adeudo total por logia (Stat) y monto adeudado por hermano (columna "Adeudo") en `TesoreriaClient`, usando el rango de cápitas por miembro y la cápita vigente.
 
-## 3. Indicadores y tableros
+## 3. Vista agregada de asistencia (roles globales)
 
-- [ ] 3.1 Tesorería: adeudo total por logia y monto adeudado por hermano (`lib/data/tesoreria.ts` + `TesoreriaClient`).
-- [ ] 3.2 Tenidas: asistencia por mes/año y tendencia temporal (`lib/data/tenidas.ts` + `TenidasClient`), gráficas según skill `dataviz`.
-- [ ] 3.3 Vistas agregadas: `estadisticas_asistencia()` (security definer) y cableado de tableros agregados de cápitas/asistencia para Gran Secretario/Master en `estadisticas/` (usa `estadisticas_capitas()` de la propuesta de alcance).
+- [x] 3.1 Función `estadisticas_asistencia()` (security definer, agregada por logia) accesible a master/gran_secretario. → `20260705124537_estadisticas_asistencia.sql`
+- [x] 3.2 Asistencia agregada por logia en `/estadisticas` para roles globales (junto a cápitas), vía `lib/data/tenidas.ts`.
 
 ## 4. Verificación
 
-- [ ] 4.1 Tesorero abre `/cumplimientos` → ve solo lo propio (sin inflar).
-- [ ] 4.2 Con cambio de tarifa a mitad de año, el recaudado usa el monto vigente por periodo.
-- [ ] 4.3 Adeudos por logia y por hermano correctos; tableros de asistencia por mes/año y tendencia.
-- [ ] 4.4 Gran Secretario ve agregados por logia sin filas individuales.
+- [x] 4.1 `/cumplimientos` calcula solo lo propio (filtrado por `user.id`); ruta 200 sin regresión.
+- [x] 4.2 Tesorería muestra adeudo por logia (Stat) y por hermano (columna); ruta 200.
+- [x] 4.3 Gran Secretario ve asistencia agregada por logia (3 filas); hermano no puede llamar `estadisticas_asistencia` (rechazado). (verificado psql)
 
 ## 5. Calidad
 
-- [ ] 5.1 `npm run typecheck` y `npm run lint` en verde.
+- [x] 5.1 `npm run typecheck` y `npm run lint` en verde.
+
+<!-- DIFERIDO a tesoreria-historico-capita-tendencias (#6b):
+     - Histórico/periodicidad de cápita (cambio de PK config_capitas + backfill en prod).
+     - Recaudado por monto vigente del periodo.
+     - Asistencia por mes/año y tendencias (dataviz). -->

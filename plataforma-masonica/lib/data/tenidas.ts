@@ -34,3 +34,14 @@ export async function setAsistencia(sb: SupabaseClient, tenidaId: string, usuari
     { onConflict: "tenida_id,usuario_id" },
   );
 }
+
+export interface AsistenciaLogiaAgg {
+  logia_id: string; nombre: string; numero: number;
+  tenidas: number; presentes: number; registros: number; asistencia_pct: number;
+}
+
+// Vista AGREGADA de asistencia por logia (RPC security definer). Para master/Gran Secretario.
+export async function estadisticasAsistencia(sb: SupabaseClient): Promise<AsistenciaLogiaAgg[]> {
+  const { data } = await sb.rpc("estadisticas_asistencia");
+  return ((data ?? []) as AsistenciaLogiaAgg[]);
+}

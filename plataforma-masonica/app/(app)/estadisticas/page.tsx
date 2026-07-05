@@ -3,6 +3,7 @@ import { cargarPerfil } from "@/lib/data/perfil";
 import { esGlobal } from "@/lib/roles";
 import { estadisticasSalud } from "@/lib/data/salud-estadisticas";
 import { estadisticasCapitas, CapitaLogiaAgg } from "@/lib/data/tesoreria";
+import { estadisticasAsistencia, AsistenciaLogiaAgg } from "@/lib/data/tenidas";
 import EstadisticasClient, { LogiaOpcion } from "./EstadisticasClient";
 
 // Server Component: carga el agregado anonimizado (RPC security definer) y, para admins globales,
@@ -16,13 +17,14 @@ export default async function Estadisticas() {
   const perfil = await cargarPerfil(supabase, user.id);
   if (!perfil) return null;
   const global = esGlobal(perfil.rol);
-  const [logias, data, capitas] = await Promise.all([
+  const [logias, data, capitas, asistencia] = await Promise.all([
     global
       ? supabase.from("logias").select("id,nombre,numero").order("numero").then(r => (r.data ?? []) as LogiaOpcion[])
       : Promise.resolve([] as LogiaOpcion[]),
     estadisticasSalud(supabase, global ? null : undefined),
-    // Vista agregada de cápitas por logia: solo roles globales (master/Gran Secretario).
+    // Vistas agregadas por logia: solo roles globales (master/Gran Secretario).
     global ? estadisticasCapitas(supabase) : Promise.resolve([] as CapitaLogiaAgg[]),
+    global ? estadisticasAsistencia(supabase) : Promise.resolve([] as AsistenciaLogiaAgg[]),
   ]);
-  return <EstadisticasClient global={global} logias={logias} initial={data} capitas={capitas} />;
+  return <EstadisticasClient global={global} logias={logias} initial={data} capitas={capitas} asistencia={asistencia} />;
 }
