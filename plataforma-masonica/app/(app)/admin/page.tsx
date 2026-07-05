@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { cargarPerfil } from "@/lib/data/perfil";
 import { esGlobal } from "@/lib/roles";
 import { adminListLogias, adminGetLogia, adminListUsuarios } from "@/lib/data/identidad";
-import { Logia } from "@/lib/types";
+import { Logia, Usuario } from "@/lib/types";
 import AdminClient from "./AdminClient";
 
 // Server Component: carga el estado inicial de administración (logias, logia y hermanos) en el
@@ -16,12 +16,20 @@ export default async function Admin() {
   const perfil = await cargarPerfil(supabase, user.id);
   if (!perfil) return null;
   const global = esGlobal(perfil.rol);
-  const logiaId = perfil.logia_id;
-  const [logias, logia, usuarios] = await Promise.all([
-    global ? adminListLogias(supabase) : Promise.resolve([] as Logia[]),
-    adminGetLogia(supabase, logiaId),
-    adminListUsuarios(supabase, logiaId),
-  ]);
-  return <AdminClient global={global} defaultLogiaId={logiaId}
+
+  // Un admin global (master / gran secretario) no pertenece a una logia (logia_id nulo): por
+  // defecto trabaja la primera logia disponible. Un admin de logia usa la suya.
+  const logias = global ? await adminListLogias(supabase) : ([] as Logia[]);
+  const defaultLogiaId = global ? (logias[0]?.id ?? "") : perfil.logia_id;
+
+  // Sin logia por defecto (admin global y aún no hay logias): no consultar con id vacío.
+  const [logia, usuarios] = defaultLogiaId
+    ? await Promise.all([
+        adminGetLogia(supabase, defaultLogiaId),
+        adminListUsuarios(supabase, defaultLogiaId),
+      ])
+    : [undefined, [] as Usuario[]];
+
+  return <AdminClient global={global} defaultLogiaId={defaultLogiaId}
     initialLogias={logias} initialLogia={logia} initialUsuarios={usuarios} />;
 }
