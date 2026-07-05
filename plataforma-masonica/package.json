@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "check:encoding": "node scripts/check-encoding.mjs",
     "crear:master": "node --env-file=.env.local scripts/crear-master.mjs .env.local"
   },
   "engines": {
