@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { cargarPerfil } from "@/lib/data/perfil";
-import { listMiembros, getCapita, listPagos } from "@/lib/data/tesoreria";
+import { listMiembros, getCapitaConfig, listPagos } from "@/lib/data/tesoreria";
 import TesoreriaClient from "./TesoreriaClient";
 
 // Server Component: carga miembros, cápita y pagos del año en el servidor (RLS por logia).
@@ -13,10 +13,10 @@ export default async function Tesoreria() {
   const perfil = await cargarPerfil(supabase, user.id);
   const logiaId = perfil?.logia_id ?? "";
   const anio = new Date().getFullYear();
-  const [miembros, capita, pagos] = await Promise.all([
+  const [miembros, config, pagos] = await Promise.all([
     listMiembros(supabase, logiaId),
-    getCapita(supabase, logiaId),
+    getCapitaConfig(supabase, logiaId),
     listPagos(supabase, anio),
   ]);
-  return <TesoreriaClient anio={anio} miembros={miembros} capita={capita} pagos={pagos} />;
+  return <TesoreriaClient anio={anio} miembros={miembros} capita={config.monto} periodicidad={config.periodicidad} pagos={pagos} />;
 }
