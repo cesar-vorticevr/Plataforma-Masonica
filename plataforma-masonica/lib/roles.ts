@@ -36,8 +36,9 @@ export const can = {
   correspondencia: (u: Usuario) => esAdminLogia(u.rol),
   tesoreria: (u: Usuario) => u.rol === "tesorero" || u.rol === "secretario" || u.rol === "master",
   tenidas: (u: Usuario) => u.rol === "secretario" || u.rol === "master",
-  // Cifras de cápitas en Estadísticas: master (todas) o secretario (su logia). Gran Secretario NO.
-  verCapitasStats: (u: Usuario) => u.rol === "master" || u.rol === "secretario",
+  // Cifras de cápitas en Estadísticas: master (todas), secretario (su logia) y Gran Secretario
+  // (agregado por logia, sin datos individuales; §4.2 Tesorería = Agreg para Gran Secretario).
+  verCapitasStats: (u: Usuario) => u.rol === "master" || u.rol === "secretario" || u.rol === "gran_secretario",
   administrar: (u: Usuario) => esAdminLogia(u.rol),
   altaLogias: (u: Usuario) => esGlobal(u.rol),
   directorio: (u: Usuario) => accesoCompleto(u),

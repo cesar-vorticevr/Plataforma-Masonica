@@ -4,6 +4,9 @@ import { createClient } from "@/lib/supabase/client";
 import { Card, PageTitle, Stat, Empty, Select } from "@/components/ui";
 import { CONDICION_LABEL } from "@/lib/types";
 import { estadisticasSalud, EstadisticasSalud, Distribucion } from "@/lib/data/salud-estadisticas";
+import { CapitaLogiaAgg } from "@/lib/data/tesoreria";
+
+const mxn = (n: number) => n.toLocaleString("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 });
 
 const ET_LABEL: Record<string, string> = {
   tabaquismo: "Tabaquismo", alcohol: "Consumo de alcohol", sedentarismo: "Sedentarismo",
@@ -17,8 +20,8 @@ export interface LogiaOpcion { id: string; nombre: string; numero: number }
 
 // Isla de estadísticas: recibe el agregado inicial del servidor; el admin global puede cambiar de
 // logia y la isla recalcula con el cliente de navegador (RPC agregado, nunca individual).
-export default function EstadisticasClient({ global, logias, initial }:
-  { global: boolean; logias: LogiaOpcion[]; initial: EstadisticasSalud | null }) {
+export default function EstadisticasClient({ global, logias, initial, capitas = [] }:
+  { global: boolean; logias: LogiaOpcion[]; initial: EstadisticasSalud | null; capitas?: CapitaLogiaAgg[] }) {
   const [sel, setSel] = useState<string>("todas");
   const [data, setData] = useState<EstadisticasSalud | null | undefined>(initial);
 
@@ -112,10 +115,30 @@ export default function EstadisticasClient({ global, logias, initial }:
         </>
       )}
 
+      {global && capitas.length > 0 && (
+        <Card className="mt-6 p-0 overflow-hidden">
+          <div className="p-4 border-b font-semibold text-navy">Cápitas por logia (agregado)</div>
+          <table className="w-full text-sm">
+            <thead><tr className="text-left text-slate-500 border-b">
+              <th className="p-3">Logia</th><th>Recaudado</th><th>Cumplimiento</th><th>Pagos</th></tr></thead>
+            <tbody>
+              {capitas.map(c => (
+                <tr key={c.logia_id} className="border-b last:border-0">
+                  <td className="p-3 text-slate-700">{c.nombre} <span className="text-slate-400">N.°{c.numero}</span></td>
+                  <td className="text-navy font-medium">{mxn(c.recaudado)}</td>
+                  <td className="text-slate-600">{c.cumplimiento_pct}%</td>
+                  <td className="text-slate-500 text-xs">{c.pagos_cubiertos}/{c.pagos_registrados}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="p-3 text-xs text-slate-400">Cifras agregadas por logia. No se muestran pagos individuales.</p>
+        </Card>
+      )}
+
       <p className="text-xs text-slate-400 mt-4">
         Los datos de salud se muestran únicamente de forma agregada y anonimizada. El detalle individual
-        solo es visible para cada hermano. Las estadísticas de cápitas y asistencia llegarán al cablear
-        sus módulos.
+        solo es visible para cada hermano.
       </p>
     </div>
   );
