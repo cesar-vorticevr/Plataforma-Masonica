@@ -42,3 +42,15 @@ export async function setPago(
 export async function setInicioCapita(sb: SupabaseClient, usuarioId: string, fecha: string): Promise<void> {
   await sb.rpc("set_inicio_capita", { p_usuario: usuarioId, p_fecha: fecha });
 }
+
+export interface CapitaLogiaAgg {
+  logia_id: string; nombre: string; numero: number;
+  recaudado: number; pagos_cubiertos: number; pagos_registrados: number; cumplimiento_pct: number;
+}
+
+// Vista AGREGADA de cápitas por logia (RPC security definer). Para master/Gran Secretario;
+// no expone pagos individuales.
+export async function estadisticasCapitas(sb: SupabaseClient): Promise<CapitaLogiaAgg[]> {
+  const { data } = await sb.rpc("estadisticas_capitas");
+  return ((data ?? []) as CapitaLogiaAgg[]);
+}
