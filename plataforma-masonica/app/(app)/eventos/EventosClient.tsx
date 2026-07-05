@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 import { can } from "@/lib/roles";
 import { Card, PageTitle, Button, Input, Textarea, Select, Badge, Empty, Modal } from "@/components/ui";
-import { addEvento, marcarEventosVistos } from "@/lib/data/eventos";
+import { addEvento, marcarEventosVistos, urlDescargaEvento } from "@/lib/data/eventos";
 import { Evento } from "@/lib/types";
 import { fecha } from "@/lib/format";
 
@@ -45,6 +45,15 @@ export default function EventosClient({ eventos }: { eventos: Evento[] }) {
                   </div>
                   <p className="text-sm text-slate-600 mt-1">{e.descripcion}</p>
                   <p className="text-xs text-slate-400 mt-2">{fecha(e.fecha_evento)}</p>
+                  {e.adjuntos?.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {e.adjuntos.map((a, i) => (
+                        <button key={i} type="button"
+                          onClick={async () => { const u = await urlDescargaEvento(createClient(), a.ruta); if (u) window.open(u, "_blank", "noopener"); }}
+                          className="badge bg-slate-100 text-slate-700 hover:bg-slate-200">📎 {a.nombre}</button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </Card>
@@ -60,6 +69,7 @@ export default function EventosClient({ eventos }: { eventos: Evento[] }) {
 function Crear({ userId, logiaId, global, onClose, onSaved }:
   { userId: string; logiaId: string; global: boolean; onClose: () => void; onSaved: () => void }) {
   const [f, setF] = useState({ titulo: "", descripcion: "", fecha_evento: "", alcance: "logia" });
+  const [archivos, setArchivos] = useState<File[]>([]);
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
   const set = (k: string, v: string) => setF(s => ({ ...s, [k]: v }));
@@ -71,7 +81,7 @@ function Crear({ userId, logiaId, global, onClose, onSaved }:
     const { error } = await addEvento(createClient(), {
       titulo: f.titulo, descripcion: f.descripcion, fecha_evento: new Date(f.fecha_evento).toISOString(),
       alcance, logia_id: alcance === "global" ? null : logiaId, autor_id: userId,
-    });
+    }, archivos);
     setGuardando(false);
     if (error) { setError("No se pudo publicar el evento."); return; }
     onSaved();
@@ -87,6 +97,11 @@ function Crear({ userId, logiaId, global, onClose, onSaved }:
           <option value="logia">Solo mi logia</option>
           {global && <option value="global">Todas las logias</option>}
         </Select>
+        <div>
+          <label className="label">Adjuntos (PDF, Word, PNG, JPG)</label>
+          <input type="file" multiple accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" className="input"
+            onChange={e => setArchivos(Array.from(e.target.files ?? []))} />
+        </div>
         {error && <p className="text-rose-600 text-sm">{error}</p>}
         <div className="flex justify-end gap-2 pt-2"><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button onClick={guardar} disabled={guardando}>Publicar</Button></div>
       </div>

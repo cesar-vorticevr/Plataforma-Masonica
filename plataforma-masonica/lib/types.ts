@@ -86,6 +86,7 @@ export interface Evento {
   alcance: AlcanceEvento;
   logia_id: string | null;
   autor_id: string;
+  adjuntos: { nombre: string; tipo: string; ruta: string }[];
   created_at: string;
 }
 

@@ -32,20 +32,22 @@ export default function BuzonClient({ docs }: { docs: DocBuzon[] }) {
                 <div className="font-medium text-slate-800">{d.titulo}</div>
                 <div className="text-xs text-slate-400">{fecha(d.fecha)}</div>
               </div>
+              <Badge color={d.alcance === "global" ? "gold" : "blue"}>{d.alcance === "global" ? "Todas" : "Mi logia"}</Badge>
               <Badge color={d.tipo === "pdf" ? "red" : "blue"}>{d.tipo.toUpperCase()}</Badge>
               <Button variant="ghost" className="text-xs" onClick={() => descargar(d.archivo_url)}>Descargar</Button>
             </div>
           ))}
         </Card>
       )}
-      {open && <Subir userId={user.id} onClose={() => setOpen(false)} onSaved={() => { setOpen(false); router.refresh(); }} />}
+      {open && <Subir userId={user.id} logiaId={user.logia_id} onClose={() => setOpen(false)} onSaved={() => { setOpen(false); router.refresh(); }} />}
     </div>
   );
 }
 
-function Subir({ userId, onClose, onSaved }: { userId: string; onClose: () => void; onSaved: () => void }) {
+function Subir({ userId, logiaId, onClose, onSaved }: { userId: string; logiaId: string; onClose: () => void; onSaved: () => void }) {
   const [titulo, setTitulo] = useState("");
   const [tipo, setTipo] = useState<"pdf" | "word">("pdf");
+  const [alcance, setAlcance] = useState<"logia" | "global">("global");
   const [archivo, setArchivo] = useState<File | null>(null);
   const [error, setError] = useState("");
   const [subiendo, setSubiendo] = useState(false);
@@ -53,7 +55,7 @@ function Subir({ userId, onClose, onSaved }: { userId: string; onClose: () => vo
   async function guardar() {
     if (!titulo || !archivo) { setError("Indica un título y selecciona un archivo."); return; }
     setSubiendo(true); setError("");
-    const { error } = await subir(createClient(), titulo, tipo, archivo, userId);
+    const { error } = await subir(createClient(), titulo, tipo, archivo, userId, alcance, logiaId);
     setSubiendo(false);
     if (error) { setError("No se pudo subir el documento."); return; }
     onSaved();
@@ -65,6 +67,10 @@ function Subir({ userId, onClose, onSaved }: { userId: string; onClose: () => vo
         <Input label="Título" value={titulo} onChange={e => setTitulo(e.target.value)} />
         <Select label="Tipo" value={tipo} onChange={e => setTipo(e.target.value as "pdf" | "word")}>
           <option value="pdf">PDF</option><option value="word">Word</option>
+        </Select>
+        <Select label="Alcance" value={alcance} onChange={e => setAlcance(e.target.value as "logia" | "global")}>
+          <option value="global">Todas las logias</option>
+          <option value="logia">Solo mi logia</option>
         </Select>
         <div>
           <label className="label">Archivo</label>
