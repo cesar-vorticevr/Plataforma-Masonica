@@ -1,17 +1,21 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 import { NAV } from "./nav";
-import { ROL_LABEL, GRADO_LABEL } from "@/lib/types";
+import { ROL_LABEL, GRADO_LABEL, Logia } from "@/lib/types";
+import { esGlobal } from "@/lib/roles";
+import { escribirLogiaActiva } from "@/lib/logia-activa";
 import { initials } from "@/lib/format";
 
 interface LogiaInfo { nombre: string; numero: number; oriente: string }
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
+export default function AppShell({ children, logias = [], logiaActivaId = "" }:
+  { children: React.ReactNode; logias?: Logia[]; logiaActivaId?: string }) {
   const { user, logout } = useAuth();
+  const router = useRouter();
   const path = usePathname();
   const [open, setOpen] = useState(false);
   const [notif, setNotif] = useState(0);
@@ -42,6 +46,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   if (!user) return null;
   const items = NAV.filter(i => i.show(user));
+
+  // Solo un admin global elige la logia sobre la que opera; escribe la cookie y refresca los
+  // componentes de servidor (header + páginas de una sola logia leen la misma logia activa).
+  const mostrarSelector = esGlobal(user.rol) && logias.length > 0;
+  function cambiarLogia(id: string) {
+    escribirLogiaActiva(id);
+    router.refresh();
+  }
 
   return (
     <div className="min-h-screen flex">
@@ -77,6 +89,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             {logia ? `Resp.·. Log.·. ${logia.nombre} N.°${logia.numero} · Or.·. ${logia.oriente}` : ""}
           </div>
           <div className="flex items-center gap-3 ml-auto">
+            {mostrarSelector && (
+              <select value={logiaActivaId} onChange={e => cambiarLogia(e.target.value)} aria-label="Logia activa"
+                className="input h-9 py-0 text-sm max-w-[12rem]">
+                {logias.map(l => <option key={l.id} value={l.id}>{l.nombre} N.°{l.numero}</option>)}
+              </select>
+            )}
             <div className="flex items-center gap-2">
               <div className="w-9 h-9 rounded-full bg-navy text-white grid place-items-center text-sm font-semibold">{initials(user.nombre)}</div>
               <div className="hidden sm:block leading-tight">

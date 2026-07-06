@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { cargarPerfil } from "@/lib/data/perfil";
+import { resolverLogiaActiva } from "@/lib/data/logia-activa";
 import { accesoCompleto, esAdminLogia } from "@/lib/roles";
 import { Card, PageTitle, Stat, Badge } from "@/components/ui";
 import { ROL_LABEL, GRADO_LABEL } from "@/lib/types";
@@ -27,14 +28,20 @@ export default async function Dashboard() {
   const validado = accesoCompleto(user);
   const puedeContar = esAdminLogia(user.rol) || user.rol === "tesorero";
 
+  // Logia de referencia del panel: la del hermano o, para un admin global, la logia activa del
+  // selector del header. Sin logia en foco (global sin logias) no se consultan datos por logia.
+  const { logiaId } = await resolverLogiaActiva(supabase, user);
+
   const [logia, evals, pagos, tenidas, asistencias, conteo, eventos] = await Promise.all([
-    supabase.from("logias").select("nombre,oriente").eq("id", user.logia_id).single().then(r => r.data as LogiaInfo | null),
+    logiaId
+      ? supabase.from("logias").select("nombre,oriente").eq("id", logiaId).single().then(r => r.data as LogiaInfo | null)
+      : Promise.resolve(null),
     listEvaluaciones(supabase, user.id),
     listPagos(supabase, anio),
-    listTenidas(supabase, user.logia_id),
+    logiaId ? listTenidas(supabase, logiaId) : Promise.resolve([]),
     listAsistencias(supabase),
-    puedeContar
-      ? supabase.from("perfiles").select("id", { count: "exact", head: true }).eq("logia_id", user.logia_id).then(r => r.count ?? 0)
+    puedeContar && logiaId
+      ? supabase.from("perfiles").select("id", { count: "exact", head: true }).eq("logia_id", logiaId).then(r => r.count ?? 0)
       : Promise.resolve(null),
     listEventos(supabase),
   ]);

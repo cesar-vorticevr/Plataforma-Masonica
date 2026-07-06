@@ -1,22 +1,43 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 import { Card, PageTitle, Stat, Button, Input, Empty } from "@/components/ui";
-import { addTenida, setAsistencia, MiembroTenida, AsistenciaRow } from "@/lib/data/tenidas";
+import { addTenida, setAsistencia, listTenidas, listMiembros, listAsistencias, MiembroTenida, AsistenciaRow } from "@/lib/data/tenidas";
 import { Tenida, MESES } from "@/lib/types";
 import { fecha } from "@/lib/format";
 
-// Isla de tenidas: recibe tenidas/miembros/asistencias del servidor; alta de tenida y registro de
-// asistencia con el cliente de navegador; router.refresh() tras cada cambio.
-export default function TenidasClient({ tenidas, miembros, asistencias }:
-  { tenidas: Tenida[]; miembros: MiembroTenida[]; asistencias: AsistenciaRow[] }) {
+// Isla de tenidas: recibe el estado inicial del servidor. La logia sobre la que opera un admin
+// global la fija el selector del header (logia activa); aquí se refresca tras cada mutación.
+export default function TenidasClient({ global, logiaId, tenidas: tenidas0, miembros: miembros0, asistencias: asistencias0 }:
+  { global: boolean; logiaId: string;
+    tenidas: Tenida[]; miembros: MiembroTenida[]; asistencias: AsistenciaRow[] }) {
   const { user } = useAuth();
-  const router = useRouter();
+  const [tenidas, setTenidas] = useState<Tenida[]>(tenidas0);
+  const [miembros, setMiembros] = useState<MiembroTenida[]>(miembros0);
+  const [asistencias, setAsistencias] = useState<AsistenciaRow[]>(asistencias0);
   const [sel, setSel] = useState<string | null>(null);
   const [nueva, setNueva] = useState({ titulo: "", fecha: "" });
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   if (!user) return null;
+
+  // Recarga los datos de la logia activa con el cliente de navegador (RLS) tras una alta/asistencia.
+  async function refrescar() {
+    const sb = createClient();
+    const [ts, ms, as] = await Promise.all([listTenidas(sb, logiaId), listMiembros(sb, logiaId), listAsistencias(sb)]);
+    setTenidas(ts); setMiembros(ms); setAsistencias(as); setSel(null);
+  }
+
+  // Admin global sin ninguna logia creada: estado vacío claro, no un formulario que no puede operar.
+  if (global && !logiaId) {
+    return (
+      <div>
+        <PageTitle title="Tenidas y asistencia" subtitle="Calendario de tenidas y registro de asistencia." />
+        <Card><div className="p-6 text-center text-slate-400 text-sm">Aún no hay logias creadas.</div></Card>
+      </div>
+    );
+  }
 
   const total = tenidas.length;
   const pctDe = (id: string) => {
@@ -38,14 +59,22 @@ export default function TenidasClient({ tenidas, miembros, asistencias }:
   });
 
   async function crear() {
-    if (nueva.titulo && nueva.fecha) {
-      await addTenida(createClient(), user!.logia_id, nueva.titulo, new Date(nueva.fecha).toISOString());
-      setNueva({ titulo: "", fecha: "" }); router.refresh();
-    }
+    setError(null);
+    if (!logiaId) { setError("Selecciona una logia en el encabezado antes de crear una tenida."); return; }
+    if (!nueva.titulo || !nueva.fecha) { setError("Indica título y fecha."); return; }
+    setEnviando(true);
+    const { error } = await addTenida(createClient(), logiaId, nueva.titulo, new Date(nueva.fecha).toISOString());
+    setEnviando(false);
+    if (error) { setError("No se pudo crear la tenida. Inténtalo de nuevo."); return; }
+    setNueva({ titulo: "", fecha: "" });
+    await refrescar();
   }
   async function marcar(usuarioId: string, presente: boolean) {
     if (!tenida) return;
-    await setAsistencia(createClient(), tenida.id, usuarioId, presente); router.refresh();
+    setError(null);
+    const { error } = await setAsistencia(createClient(), tenida.id, usuarioId, presente);
+    if (error) { setError("No se pudo registrar la asistencia. Inténtalo de nuevo."); return; }
+    await refrescar();
   }
 
   return (
@@ -72,7 +101,8 @@ export default function TenidasClient({ tenidas, miembros, asistencias }:
           <div className="border-t pt-3 space-y-2">
             <Input label="Nueva tenida" placeholder="Título" value={nueva.titulo} onChange={e => setNueva(s => ({ ...s, titulo: e.target.value }))} />
             <Input type="date" value={nueva.fecha} onChange={e => setNueva(s => ({ ...s, fecha: e.target.value }))} />
-            <Button className="w-full" onClick={crear}>Agregar tenida</Button>
+            <Button className="w-full" onClick={crear} disabled={enviando}>{enviando ? "Agregando…" : "Agregar tenida"}</Button>
+            {error && <p className="text-rose-600 text-sm" role="alert">{error}</p>}
           </div>
         </Card>
 

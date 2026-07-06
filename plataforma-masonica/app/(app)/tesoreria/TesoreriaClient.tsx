@@ -11,8 +11,8 @@ import { money } from "@/lib/format";
 
 // Isla de tesorería: recibe miembros/cápita/pagos del servidor; edición de monto, registro de
 // pagos e inicio de cápita con el cliente de navegador; router.refresh() tras cada cambio.
-export default function TesoreriaClient({ anio, miembros: miembrosRaw, capita, periodicidad = "mensual", pagos }:
-  { anio: number; miembros: MiembroTesoreria[]; capita: number; periodicidad?: string; pagos: PagoRow[] }) {
+export default function TesoreriaClient({ anio, logiaId, miembros: miembrosRaw, capita, periodicidad = "mensual", pagos }:
+  { anio: number; logiaId: string; miembros: MiembroTesoreria[]; capita: number; periodicidad?: string; pagos: PagoRow[] }) {
   const { user } = useAuth();
   const router = useRouter();
   const [montoEdit, setMontoEdit] = useState(String(capita));
@@ -34,7 +34,8 @@ export default function TesoreriaClient({ anio, miembros: miembrosRaw, capita, p
 
   const inicioVal = (m: MiembroTesoreria) => (m.fecha_inicio ?? m.fecha_registro).slice(0, 7);
 
-  async function guardarMonto() { await setCapita(createClient(), user!.logia_id, Number(montoEdit) || 0); router.refresh(); }
+  // La logia activa (no user.logia_id, nulo para un admin global) fija sobre qué logia se guarda.
+  async function guardarMonto() { await setCapita(createClient(), logiaId, Number(montoEdit) || 0); router.refresh(); }
   async function toggle(id: string, mes: number) {
     const actual = pagos.find(p => p.usuario_id === id && p.mes === mes)?.pagado ?? false;
     await setPago(createClient(), id, anio, mes, !actual, capita, user!.id); router.refresh();

@@ -11,8 +11,9 @@ export async function listTenidas(sb: SupabaseClient, logiaId: string): Promise<
   return (data ?? []) as Tenida[];
 }
 
-export async function addTenida(sb: SupabaseClient, logiaId: string, titulo: string, fechaISO: string): Promise<void> {
-  await sb.from("tenidas").insert({ logia_id: logiaId, titulo, fecha: fechaISO });
+export async function addTenida(sb: SupabaseClient, logiaId: string, titulo: string, fechaISO: string): Promise<{ error: string | null }> {
+  const { error } = await sb.from("tenidas").insert({ logia_id: logiaId, titulo, fecha: fechaISO });
+  return { error: error?.message ?? null };
 }
 
 export async function listMiembros(sb: SupabaseClient, logiaId: string): Promise<MiembroTenida[]> {
@@ -28,11 +29,12 @@ export async function listAsistencias(sb: SupabaseClient): Promise<AsistenciaRow
   return (data ?? []) as AsistenciaRow[];
 }
 
-export async function setAsistencia(sb: SupabaseClient, tenidaId: string, usuarioId: string, presente: boolean): Promise<void> {
-  await sb.from("asistencias").upsert(
+export async function setAsistencia(sb: SupabaseClient, tenidaId: string, usuarioId: string, presente: boolean): Promise<{ error: string | null }> {
+  const { error } = await sb.from("asistencias").upsert(
     { tenida_id: tenidaId, usuario_id: usuarioId, presente },
     { onConflict: "tenida_id,usuario_id" },
   );
+  return { error: error?.message ?? null };
 }
 
 export interface AsistenciaLogiaAgg {
