@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { cargarPerfil } from "@/lib/data/perfil";
+import { resolverLogiaActiva } from "@/lib/data/logia-activa";
 import { Card, PageTitle, Stat, Badge } from "@/components/ui";
 import { getCapita, listPagos } from "@/lib/data/tesoreria";
 import { listTenidas, listAsistencias } from "@/lib/data/tenidas";
@@ -8,6 +9,8 @@ import { MESES } from "@/lib/types";
 import { money, fecha } from "@/lib/format";
 
 // Server Component puro (sin interactividad): calcula cápitas y asistencia del propio hermano.
+// La logia de referencia (cápita y tenidas) es la del hermano o, para un admin global, la logia
+// activa del selector del header.
 export const metadata = { title: "Mis cumplimientos · Plataforma Masónica" };
 
 export default async function Cumplimientos() {
@@ -16,11 +19,12 @@ export default async function Cumplimientos() {
   if (!user) return null;
   const perfil = await cargarPerfil(supabase, user.id);
   if (!perfil) return null;
+  const { logiaId } = await resolverLogiaActiva(supabase, perfil);
   const anio = new Date().getFullYear();
   const [capita, pagos, tenidas, asistencias] = await Promise.all([
-    getCapita(supabase, perfil.logia_id),
+    getCapita(supabase, logiaId),
     listPagos(supabase, anio),
-    listTenidas(supabase, perfil.logia_id),
+    listTenidas(supabase, logiaId),
     listAsistencias(supabase),
   ]);
 

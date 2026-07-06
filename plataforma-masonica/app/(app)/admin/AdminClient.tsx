@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Card, PageTitle, Button, Input, Select, Badge, Modal } from "@/components/ui";
 import {
@@ -8,26 +9,27 @@ import {
   adminDesignarSecretario, adminQuitarSecretario,
 } from "@/lib/data/identidad";
 import { getGenerales } from "@/lib/data/generales";
+import { escribirLogiaActiva } from "@/lib/logia-activa";
 import { Grado, GRADO_LABEL, ROL_LABEL, Usuario, Logia, Generales } from "@/lib/types";
 import { fecha } from "@/lib/format";
 
-// Isla de administración: recibe el estado inicial del servidor; refresca con el cliente de
-// navegador al cambiar de logia (admin global) o tras una mutación.
-export default function AdminClient({ global, defaultLogiaId, initialLogias, initialLogia, initialUsuarios }:
-  { global: boolean; defaultLogiaId: string; initialLogias: Logia[]; initialLogia: Logia | undefined; initialUsuarios: Usuario[] }) {
-  const [logiaSel, setLogiaSel] = useState(defaultLogiaId);
+// Isla de administración: recibe el estado inicial del servidor. La logia sobre la que opera un
+// admin global la fija el selector del header (logia activa); aquí se refresca tras una mutación.
+export default function AdminClient({ global, logiaId, logia: initialLogia, usuarios: initialUsuarios }:
+  { global: boolean; logiaId: string; logia: Logia | undefined; usuarios: Usuario[] }) {
+  const router = useRouter();
   const [logia, setLogia] = useState<Logia | undefined>(initialLogia);
   const [usuarios, setUsuarios] = useState<Usuario[]>(initialUsuarios);
 
-  async function refrescar(id: string) {
+  async function refrescar() {
     const sb = createClient();
-    const [lg, us] = await Promise.all([adminGetLogia(sb, id), adminListUsuarios(sb, id)]);
-    setLogia(lg); setUsuarios(us); setLogiaSel(id);
+    const [lg, us] = await Promise.all([adminGetLogia(sb, logiaId), adminListUsuarios(sb, logiaId)]);
+    setLogia(lg); setUsuarios(us);
   }
 
   if (!logia) {
     // Admin global y aún no existe ninguna logia: estado vacío claro, no un "Cargando…" eterno.
-    if (global && initialLogias.length === 0) {
+    if (global && !logiaId) {
       return (
         <div>
           <PageTitle title="Administración" subtitle="Gestión de logias, secretarios y hermanos." />
@@ -38,21 +40,20 @@ export default function AdminClient({ global, defaultLogiaId, initialLogias, ini
     return <div className="min-h-[40vh] grid place-items-center text-slate-400">Cargando…</div>;
   }
 
+  // Al crear una logia, se vuelve la logia activa: se fija la cookie y se refresca desde el servidor
+  // (así el selector del header y esta página apuntan a la nueva logia).
+  function alCrearLogia(id: string) {
+    escribirLogiaActiva(id);
+    router.refresh();
+  }
+
   return (
     <div>
       <PageTitle title="Administración" subtitle={global ? "Gestión de logias, secretarios y hermanos." : "Gestión de los hermanos de tu logia."} />
 
       <div className="grid lg:grid-cols-3 gap-4 mb-6">
-        {global && (
-          <Card>
-            <h3 className="font-semibold text-navy mb-2 text-sm">Logia seleccionada</h3>
-            <Select value={logiaSel} onChange={e => refrescar(e.target.value)}>
-              {initialLogias.map(l => <option key={l.id} value={l.id}>{l.nombre} N.°{l.numero}</option>)}
-            </Select>
-          </Card>
-        )}
-        <PalabraClave logia={logia} onSave={() => refrescar(logiaSel)} />
-        {global && <CrearLogia onCreated={id => refrescar(id)} />}
+        <PalabraClave logia={logia} onSave={() => refrescar()} />
+        {global && <CrearLogia onCreated={alCrearLogia} />}
       </div>
 
       <Card className="p-0 overflow-hidden">
@@ -62,7 +63,7 @@ export default function AdminClient({ global, defaultLogiaId, initialLogias, ini
             <th className="p-3">Hermano</th><th>Rol / Grado</th><th>Estado</th><th>Registro</th><th></th></tr></thead>
           <tbody>
             {usuarios.map(u => (
-              <UsuarioRow key={u.id} u={u} global={global} onChange={() => refrescar(logiaSel)} />
+              <UsuarioRow key={u.id} u={u} global={global} onChange={() => refrescar()} />
             ))}
           </tbody>
         </table>
