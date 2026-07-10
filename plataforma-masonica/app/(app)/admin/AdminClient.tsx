@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Card, PageTitle, Button, Input, Select, Badge, Modal } from "@/components/ui";
 import {
-  adminGetLogia, adminListUsuarios, adminValidar, adminSetEstado,
+  adminValidar, adminSetEstado,
   adminSetRol, adminCambiarPalabra, adminCrearLogia,
   adminDesignarSecretario, adminQuitarSecretario,
 } from "@/lib/data/identidad";
@@ -13,18 +13,15 @@ import { escribirLogiaActiva } from "@/lib/logia-activa";
 import { Grado, GRADO_LABEL, ROL_LABEL, Usuario, Logia, Generales } from "@/lib/types";
 import { fecha } from "@/lib/format";
 
-// Isla de administración: recibe el estado inicial del servidor. La logia sobre la que opera un
-// admin global la fija el selector del header (logia activa); aquí se refresca tras una mutación.
-export default function AdminClient({ global, logiaId, logia: initialLogia, usuarios: initialUsuarios }:
+// Isla de administración: renderiza directo desde los props del servidor (fuente única de verdad).
+// La logia sobre la que opera un admin global la fija el selector del header (logia activa); tras
+// cambiar de logia o tras una mutación, router.refresh() recarga los datos desde el servidor.
+export default function AdminClient({ global, logiaId, logia, usuarios }:
   { global: boolean; logiaId: string; logia: Logia | undefined; usuarios: Usuario[] }) {
   const router = useRouter();
-  const [logia, setLogia] = useState<Logia | undefined>(initialLogia);
-  const [usuarios, setUsuarios] = useState<Usuario[]>(initialUsuarios);
 
-  async function refrescar() {
-    const sb = createClient();
-    const [lg, us] = await Promise.all([adminGetLogia(sb, logiaId), adminListUsuarios(sb, logiaId)]);
-    setLogia(lg); setUsuarios(us);
+  function refrescar() {
+    router.refresh();
   }
 
   if (!logia) {

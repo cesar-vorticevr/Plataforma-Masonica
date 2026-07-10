@@ -1,32 +1,31 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/client";
 import { Card, PageTitle, Stat, Button, Input, Empty } from "@/components/ui";
-import { addTenida, setAsistencia, listTenidas, listMiembros, listAsistencias, MiembroTenida, AsistenciaRow } from "@/lib/data/tenidas";
+import { addTenida, setAsistencia, MiembroTenida, AsistenciaRow } from "@/lib/data/tenidas";
 import { Tenida, MESES } from "@/lib/types";
 import { fecha } from "@/lib/format";
 
-// Isla de tenidas: recibe el estado inicial del servidor. La logia sobre la que opera un admin
-// global la fija el selector del header (logia activa); aquí se refresca tras cada mutación.
-export default function TenidasClient({ global, logiaId, tenidas: tenidas0, miembros: miembros0, asistencias: asistencias0 }:
+// Isla de tenidas: renderiza directo desde los props del servidor (fuente única de verdad). La logia
+// sobre la que opera un admin global la fija el selector del header (logia activa); tras cambiar de
+// logia o tras una mutación, router.refresh() recarga los datos desde el servidor.
+export default function TenidasClient({ global, logiaId, tenidas, miembros, asistencias }:
   { global: boolean; logiaId: string;
     tenidas: Tenida[]; miembros: MiembroTenida[]; asistencias: AsistenciaRow[] }) {
   const { user } = useAuth();
-  const [tenidas, setTenidas] = useState<Tenida[]>(tenidas0);
-  const [miembros, setMiembros] = useState<MiembroTenida[]>(miembros0);
-  const [asistencias, setAsistencias] = useState<AsistenciaRow[]>(asistencias0);
+  const router = useRouter();
   const [sel, setSel] = useState<string | null>(null);
   const [nueva, setNueva] = useState({ titulo: "", fecha: "" });
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   if (!user) return null;
 
-  // Recarga los datos de la logia activa con el cliente de navegador (RLS) tras una alta/asistencia.
-  async function refrescar() {
-    const sb = createClient();
-    const [ts, ms, as] = await Promise.all([listTenidas(sb, logiaId), listMiembros(sb, logiaId), listAsistencias(sb)]);
-    setTenidas(ts); setMiembros(ms); setAsistencias(as); setSel(null);
+  // Recarga desde el servidor (RLS) tras una alta/asistencia y limpia la selección local.
+  function refrescar() {
+    setSel(null);
+    router.refresh();
   }
 
   // Admin global sin ninguna logia creada: estado vacío claro, no un formulario que no puede operar.
@@ -67,14 +66,14 @@ export default function TenidasClient({ global, logiaId, tenidas: tenidas0, miem
     setEnviando(false);
     if (error) { setError("No se pudo crear la tenida. Inténtalo de nuevo."); return; }
     setNueva({ titulo: "", fecha: "" });
-    await refrescar();
+    refrescar();
   }
   async function marcar(usuarioId: string, presente: boolean) {
     if (!tenida) return;
     setError(null);
     const { error } = await setAsistencia(createClient(), tenida.id, usuarioId, presente);
     if (error) { setError("No se pudo registrar la asistencia. Inténtalo de nuevo."); return; }
-    await refrescar();
+    refrescar();
   }
 
   return (
