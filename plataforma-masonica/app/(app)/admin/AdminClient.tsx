@@ -24,24 +24,28 @@ export default function AdminClient({ global, logiaId, logia, usuarios }:
     router.refresh();
   }
 
-  if (!logia) {
-    // Admin global y aún no existe ninguna logia: estado vacío claro, no un "Cargando…" eterno.
-    if (global && !logiaId) {
-      return (
-        <div>
-          <PageTitle title="Administración" subtitle="Gestión de logias, secretarios y hermanos." />
-          <Card><div className="p-6 text-center text-slate-400 text-sm">Aún no hay logias creadas.</div></Card>
-        </div>
-      );
-    }
-    return <div className="min-h-[40vh] grid place-items-center text-slate-400">Cargando…</div>;
-  }
-
   // Al crear una logia, se vuelve la logia activa: se fija la cookie y se refresca desde el servidor
   // (así el selector del header y esta página apuntan a la nueva logia).
   function alCrearLogia(id: string) {
     escribirLogiaActiva(id);
     router.refresh();
+  }
+
+  if (!logia) {
+    // Admin global y aún no existe ninguna logia: este es el único lugar donde el master puede dar
+    // de alta la primera logia, así que el formulario debe estar presente (no solo un mensaje).
+    if (global && !logiaId) {
+      return (
+        <div>
+          <PageTitle title="Administración" subtitle="Gestión de logias, secretarios y hermanos." />
+          <div className="grid lg:grid-cols-3 gap-4 mb-6">
+            <CrearLogia onCreated={alCrearLogia} />
+          </div>
+          <Card><div className="p-6 text-center text-slate-400 text-sm">Aún no hay logias creadas. Crea la primera para empezar a registrar hermanos.</div></Card>
+        </div>
+      );
+    }
+    return <div className="min-h-[40vh] grid place-items-center text-slate-400">Cargando…</div>;
   }
 
   return (
