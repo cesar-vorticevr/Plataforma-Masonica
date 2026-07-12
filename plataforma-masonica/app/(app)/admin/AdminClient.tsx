@@ -7,6 +7,7 @@ import {
   adminValidar, adminSetEstado,
   adminSetRol, adminCambiarPalabra, adminCrearLogia,
   adminDesignarSecretario, adminQuitarSecretario,
+  adminEditarLogia, adminSetEstadoLogia,
 } from "@/lib/data/identidad";
 import { getGenerales } from "@/lib/data/generales";
 import { escribirLogiaActiva } from "@/lib/logia-activa";
@@ -16,8 +17,8 @@ import { fecha } from "@/lib/format";
 // Isla de administración: renderiza directo desde los props del servidor (fuente única de verdad).
 // La logia sobre la que opera un admin global la fija el selector del header (logia activa); tras
 // cambiar de logia o tras una mutación, router.refresh() recarga los datos desde el servidor.
-export default function AdminClient({ global, logiaId, logia, usuarios }:
-  { global: boolean; logiaId: string; logia: Logia | undefined; usuarios: Usuario[] }) {
+export default function AdminClient({ global, logiaId, logia, usuarios, logias }:
+  { global: boolean; logiaId: string; logia: Logia | undefined; usuarios: Usuario[]; logias: Logia[] }) {
   const router = useRouter();
 
   function refrescar() {
@@ -56,6 +57,22 @@ export default function AdminClient({ global, logiaId, logia, usuarios }:
         <PalabraClave logia={logia} onSave={() => refrescar()} />
         {global && <CrearLogia onCreated={alCrearLogia} />}
       </div>
+
+      {global && (
+        <Card className="p-0 overflow-hidden mb-6">
+          <div className="p-4 border-b font-semibold text-navy">Logias</div>
+          <table className="w-full text-sm">
+            <thead><tr className="text-left text-slate-500 border-b">
+              <th className="p-3">Logia</th><th>N.°</th><th>Oriente</th><th>Estado</th><th></th></tr></thead>
+            <tbody>
+              {logias.map(l => (
+                <LogiaRow key={l.id} l={l} activa={l.id === logiaId} onChange={() => refrescar()} />
+              ))}
+            </tbody>
+          </table>
+          {logias.length === 0 && <div className="p-6 text-center text-slate-400 text-sm">Aún no hay logias creadas.</div>}
+        </Card>
+      )}
 
       <Card className="p-0 overflow-hidden">
         <div className="p-4 border-b font-semibold text-navy">Hermanos de {logia.nombre}</div>
@@ -163,6 +180,92 @@ function GestionUsuario({ u, global, onClose }: { u: Usuario; global: boolean; o
             </p>
           </div>
         )}
+      </div>
+    </Modal>
+  );
+}
+
+function LogiaRow({ l, activa, onChange }: { l: Logia; activa: boolean; onChange: () => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <tr className="border-b last:border-0">
+      <td className="p-3">
+        <div className="font-medium text-slate-800">{l.nombre}{activa && <span className="ml-2 text-xs text-royal">· activa</span>}</div>
+      </td>
+      <td className="text-slate-600">{l.numero}</td>
+      <td className="text-slate-600">{l.oriente}</td>
+      <td><Badge color={l.estado === "activa" ? "green" : "slate"}>● {l.estado}</Badge></td>
+      <td className="text-right pr-3"><Button variant="ghost" className="text-xs" onClick={() => setOpen(true)}>Editar</Button></td>
+      {open && <td><EditarLogia l={l} onClose={() => { setOpen(false); onChange(); }} /></td>}
+    </tr>
+  );
+}
+
+function EditarLogia({ l, onClose }: { l: Logia; onClose: () => void }) {
+  const [nombre, setNombre] = useState(l.nombre);
+  const [numero, setNumero] = useState(String(l.numero));
+  const [oriente, setOriente] = useState(l.oriente);
+  const [estado, setEstado] = useState(l.estado);
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState("");
+
+  const numeroOk = /^\d+$/.test(numero.trim());
+  const valido = !!nombre.trim() && !!oriente.trim() && numeroOk;
+
+  async function guardar() {
+    if (!valido) { setError("Completa nombre, número y oriente."); return; }
+    setGuardando(true); setError("");
+    try {
+      const sb = createClient();
+      const res = await adminEditarLogia(sb, l.id, {
+        nombre: nombre.trim(), numero: parseInt(numero, 10), oriente: oriente.trim(),
+      });
+      if (!res.ok) { setError(res.error ?? "No se pudo editar la logia."); return; }
+      if (estado !== l.estado) await adminSetEstadoLogia(sb, l.id, estado);
+      onClose();
+    } finally { setGuardando(false); }
+  }
+
+  return (
+    <Modal open onClose={onClose} title={`Editar ${l.nombre}`}>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <div>
+            <label className="label">Nombre</label>
+            <Input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Nombre" />
+          </div>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label className="label">N.°</label>
+              <Input value={numero} onChange={e => setNumero(e.target.value)} placeholder="N.°" inputMode="numeric" />
+            </div>
+            <div className="flex-1">
+              <label className="label">Oriente</label>
+              <Input value={oriente} onChange={e => setOriente(e.target.value)} placeholder="Oriente (ciudad)" />
+            </div>
+          </div>
+          <p className="text-xs text-slate-400">La palabra clave se cambia en su propia tarjeta, no aquí.</p>
+        </div>
+
+        <div>
+          <label className="label">Estado de la logia</label>
+          <div className="flex items-center gap-2">
+            <Badge color={estado === "activa" ? "green" : "slate"}>● {estado}</Badge>
+            <Button variant="ghost" disabled={guardando}
+              onClick={() => setEstado(estado === "activa" ? "inactiva" : "activa")}>
+              {estado === "activa" ? "Desactivar" : "Activar"}
+            </Button>
+          </div>
+          <p className="text-xs text-slate-400 mt-1">
+            Desactivar solo impide que se registren hermanos nuevos en esta logia. Los hermanos
+            actuales conservan su acceso y la logia sigue visible para administradores.
+          </p>
+        </div>
+
+        <div className="flex justify-end">
+          <Button onClick={guardar} disabled={guardando || !valido}>Guardar cambios</Button>
+        </div>
+        {error && <p className="text-rose-600 text-sm">{error}</p>}
       </div>
     </Modal>
   );

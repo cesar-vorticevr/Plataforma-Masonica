@@ -15,7 +15,7 @@ export default async function Admin() {
   if (!user) return null;
   const perfil = await cargarPerfil(supabase, user.id);
   if (!perfil) return null;
-  const { logiaId, global } = await resolverLogiaActiva(supabase, perfil);
+  const { logiaId, global, logias } = await resolverLogiaActiva(supabase, perfil);
 
   // Sin logia en foco (admin global y aún no hay logias): no consultar con id vacío.
   const [logia, usuarios] = logiaId
@@ -25,5 +25,5 @@ export default async function Admin() {
       ])
     : [undefined, [] as Usuario[]];
 
-  return <AdminClient global={global} logiaId={logiaId} logia={logia} usuarios={usuarios} />;
+  return <AdminClient global={global} logiaId={logiaId} logia={logia} usuarios={usuarios} logias={logias} />;
 }

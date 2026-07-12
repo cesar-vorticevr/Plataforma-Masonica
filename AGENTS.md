@@ -322,7 +322,17 @@ correr en el host (recomendado) o en su propio contenedor.
 2. `npx supabase start` — levanta Postgres/Auth/Storage/Studio/… (Docker). Aplica migraciones + `seed.sql`.
 3. `npx supabase status` — copia `API URL` (`http://localhost:54321`) y `anon key` a `.env.local`.
 4. App: `npm run dev` en el host (más simple), **o** `docker compose up` (contenedor; ver caveat de red en `docker-compose.yml`).
-5. `npx supabase db reset` — reconstruye el esquema + semilla desde cero cuando haga falta.
+5. `npx supabase db reset` — reconstruye el esquema + semilla desde cero. **Destructivo** (ver reglas abajo).
+
+**Reglas obligatorias para agentes en local:**
+
+- **Usa SIEMPRE el administrador maestro existente** — `master@restauracion.org.mx` / `Verify1234!`
+  (definidos en `.env.local` como `MASTER_EMAIL` / `MASTER_PASSWORD`, creado por `npm run crear:master`).
+  **No crees usuarios de prueba nuevos** para verificar flujos: inicia sesión con este maestro.
+- **NO ejecutes `npx supabase db reset`.** Borra toda la BD —incluido el maestro, que `seed.sql` **no**
+  recrea— y obliga a volver a correr `npm run crear:master`. Para aplicar migraciones nuevas usa
+  `npx supabase migration up` (no destructivo, conserva usuarios y datos). Reserva `db reset` para
+  cuando el usuario lo pida explícitamente, y si lo haces, recrea el maestro con `npm run crear:master`.
 
 **Fuente de verdad del esquema:** `supabase/migrations/` (no hay `schema.sql`; se eliminó para evitar
 deriva). La semilla local vive en `supabase/seed.sql`. Mantén las migraciones **sincronizadas** con

@@ -68,3 +68,27 @@ export async function adminCrearLogia(
   });
   return (data as string | null) ?? undefined;
 }
+
+// Edita los datos básicos de una logia (NO la palabra clave; eso es set_palabra_logia). El guard
+// es_global() y la unicidad de número viven en la RPC. Traduce la violación de unicidad (23505) a
+// un mensaje accionable para la UI.
+export async function adminEditarLogia(
+  sb: SupabaseClient,
+  id: string,
+  args: { nombre: string; numero: number; oriente: string },
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await sb.rpc("editar_logia", {
+    p_id: id, p_nombre: args.nombre, p_numero: args.numero, p_oriente: args.oriente,
+  });
+  if (!error) return { ok: true };
+  if (error.code === "23505") return { ok: false, error: "El número de logia ya está en uso." };
+  return { ok: false, error: "No se pudo editar la logia. Verifica tus permisos." };
+}
+
+// Cambia el ciclo de vida de una logia. "inactiva" solo bloquea el registro de hermanos nuevos
+// (ver app/register); no expulsa a los hermanos ya validados ni la oculta a los admins.
+export async function adminSetEstadoLogia(
+  sb: SupabaseClient, id: string, estado: "activa" | "inactiva",
+): Promise<void> {
+  await sb.rpc("set_estado_logia", { p_id: id, p_estado: estado });
+}
