@@ -12,7 +12,7 @@ export default function RegisterForm({ logias }: { logias: LogiaOpcion[] }) {
   const { registrar } = useAuth();
   const router = useRouter();
   const [f, setF] = useState({
-    palabraGeneral: "", logiaId: logias[0]?.id ?? "", palabraLogia: "",
+    logiaId: logias[0]?.id ?? "", palabraLogia: "",
     nombre: "", email: "", password: "", confirm: "",
   });
   const [error, setError] = useState("");
@@ -24,7 +24,7 @@ export default function RegisterForm({ logias }: { logias: LogiaOpcion[] }) {
     if (f.password.length < 6) { setError("La contraseña debe tener al menos 6 caracteres."); return; }
     try {
       await registrar({ nombre: f.nombre, email: f.email, password: f.password,
-        palabraGeneral: f.palabraGeneral, logiaId: f.logiaId, palabraLogia: f.palabraLogia });
+        logiaId: f.logiaId, palabraLogia: f.palabraLogia });
       router.push("/dashboard");
     } catch (err) { setError(err instanceof Error ? err.message : String(err)); }
   }
@@ -32,10 +32,8 @@ export default function RegisterForm({ logias }: { logias: LogiaOpcion[] }) {
   return (
     <AuthCard>
       <h2 className="text-2xl font-bold text-navy">Crear registro</h2>
-      <p className="text-slate-500 text-sm mt-1">Necesitas la palabra clave de la Orden y la de tu logia.</p>
+      <p className="text-slate-500 text-sm mt-1">Necesitas la palabra clave de tu logia.</p>
       <form onSubmit={submit} className="space-y-3 mt-5">
-        <Input label="Palabra clave de la Orden" required value={f.palabraGeneral}
-          onChange={e => set("palabraGeneral", e.target.value)} placeholder="(pista demo: BOAZ)" />
         <Select label="Logia a la que perteneces" value={f.logiaId} onChange={e => set("logiaId", e.target.value)}>
           {logias.map(l => <option key={l.id} value={l.id}>{l.nombre} N.°{l.numero} · {l.oriente}</option>)}
         </Select>
