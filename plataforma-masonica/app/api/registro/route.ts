@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "Solicitud inválida." }, { status: 400 });
   }
-  const { nombre, email, password, palabraGeneral, logiaId, palabraLogia } = body;
+  const { nombre, email, password, logiaId, palabraLogia } = body;
   if (!nombre || !email || !password || !logiaId) {
     return NextResponse.json({ error: "Faltan datos obligatorios." }, { status: 400 });
   }
@@ -24,9 +24,8 @@ export async function POST(req: Request) {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  // 1. Verificar palabra general + palabra de la logia (en el servidor, contra hashes).
+  // 1. Verificar la palabra clave de la logia (en el servidor, contra el hash).
   const { data: acceso, error: eAcceso } = await admin.rpc("verificar_acceso", {
-    p_general: palabraGeneral ?? "",
     p_logia: logiaId,
     p_clave_logia: palabraLogia ?? "",
   });
@@ -34,7 +33,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No se pudo verificar el acceso." }, { status: 500 });
   }
   if (!acceso) {
-    return NextResponse.json({ error: "La palabra clave de la Orden o de la logia es incorrecta." }, { status: 403 });
+    return NextResponse.json({ error: "La palabra clave de la logia es incorrecta." }, { status: 403 });
   }
 
   // 2. Crear la cuenta (estado pendiente lo fija el trigger handle_new_user / defaults).

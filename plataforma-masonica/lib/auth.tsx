@@ -14,7 +14,7 @@ interface AuthCtx {
 }
 export interface RegistroData {
   nombre: string; email: string; password: string;
-  palabraGeneral: string; logiaId: string; palabraLogia: string;
+  logiaId: string; palabraLogia: string;
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
