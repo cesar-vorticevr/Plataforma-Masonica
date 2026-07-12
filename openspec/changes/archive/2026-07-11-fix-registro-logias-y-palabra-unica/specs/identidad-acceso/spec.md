@@ -1,3 +1,8 @@
+## RENAMED Requirements
+
+- FROM: `### Requirement: Registro controlado por doble palabra clave y logia`
+- TO: `### Requirement: Registro controlado por palabra clave de la logia`
+
 ## MODIFIED Requirements
 
 ### Requirement: Registro controlado por palabra clave de la logia
